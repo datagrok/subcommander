@@ -1,0 +1,35 @@
+#!/bin/sh
+# Description: Initializes a directory for use with $0
+set -e
+
+context_file=".$SUBCOMMANDER.context"
+
+if [ "$1" = "--help" ]; then
+	fmt <<- EOF
+		Usage: $SUBCOMMANDER $0 [DIRECTORY]
+
+		Mark the DIRECTORY for use as a workspace for $SUBCOMMAND.
+
+		Directories are $SUBCOMMAND workspaces if they contain a file
+		$context_file. $SUBCOMMAND sources this file for every invocation.
+	EOF
+	exit
+fi
+
+if [ "$1" ]; then
+	mkdir -p "$1"
+	cd "$1"
+	shift
+fi
+
+context_dir=`pwd -P`
+
+if [ -e "$context_file" ]; then
+	echo "$context_dir is already a $SUBCOMMANDER workspace."
+	echo "(Context for $SUBCOMMANDER already exists: $context_dir/$context_file)"
+	exit 1
+else
+	echo "Marking $context_dir as a $SUBCOMMANDER workspace."
+	echo "(Initializing context for $SUBCOMMANDER as $context_dir/$context_file)"
+	touch "$context_file"
+fi

@@ -1,0 +1,40 @@
+#!/bin/sh
+# Description: Lists the available sub-commands (this text)
+set -e
+
+# This script discovers the short descriptive text for each subcommand by
+# searching for text within the first 10 lines of each script following
+# "desc[ription]", optionally with a trailing : or =.
+
+# Calling:
+# 	$SUBCOMMANDER help command
+# is equivalent to:
+# 	$SUBCOMMANDER command --help
+
+if [ "$1" ]; then
+	command="$1"
+	shift
+	exec "$SUBCOMMANDER" "$command" --help "$@"
+elif [ -d "$SUBCOMMANDER_DIR" ]; then
+	seen=
+	for f in "$SUBCOMMANDER_DIR"/*; do
+		[ -x "$f" ] || continue
+		[ $seen ] || {
+			echo "Available $SUBCOMMANDER commands are:"
+			seen=1
+		}
+		printf \
+			"   %-10s %s\n" \
+			"`basename \"$f\"`" \
+			"`sed -n 's/\$0/'$SUBCOMMANDER'/g;1,10s/^.\{0,4\}desc\(ription\)\?\s*[:=]\s*//Ip' \"$f\"`"
+	done
+	[ $seen ] || fmt <<-END
+		Subcommands directory $SUBCOMMANDER_DIR contains no executables. Place
+		executable files here to enable them as sub-commands of '$SUBCOMMANDER'.
+	END
+else
+	fmt <<-END
+		Subcommands directory $SUBCOMMANDER_DIR does not exist. Place executable
+		files there to enable them as sub-commands of '$SUBCOMMANDER'.
+	END
+fi
