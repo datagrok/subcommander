@@ -15,9 +15,9 @@ if [ "$1" ]; then
 	command="$1"
 	shift
 	exec "$SUBCOMMANDER" "$command" --help "$@"
-elif [ -d "$SUBCOMMANDER_DIR" ]; then
+elif [ -d "$SC_EXEC_PATH" ]; then
 	seen=
-	for f in "$SUBCOMMANDER_DIR"/*; do
+	for f in "$SC_EXEC_PATH"/*; do
 		[ -x "$f" ] || continue
 		[ $seen ] || {
 			echo "Available $SUBCOMMANDER commands are:"
@@ -28,13 +28,17 @@ elif [ -d "$SUBCOMMANDER_DIR" ]; then
 			"`basename \"$f\"`" \
 			"`sed -n 's/\$0/'$SUBCOMMANDER'/g;1,10s/^.\{0,4\}desc\(ription\)\?\s*[:=]\s*//Ip' \"$f\"`"
 	done
+	# FIXME this will never occur, because 'list' is in subcommands dir.
+	# consider moving list back into subcommander core script.
 	[ $seen ] || fmt <<-END
-		Subcommands directory $SUBCOMMANDER_DIR contains no executables. Place
+		Subcommands directory $SC_EXEC_PATH contains no executables. Place
 		executable files here to enable them as sub-commands of '$SUBCOMMANDER'.
 	END
 else
+	# FIXME this will never occur, because 'list' is in subcommands dir.
+	# consider moving list back into subcommander core script.
 	fmt <<-END
-		Subcommands directory $SUBCOMMANDER_DIR does not exist. Place executable
+		Subcommands directory $SC_EXEC_PATH does not exist. Place executable
 		files there to enable them as sub-commands of '$SUBCOMMANDER'.
 	END
 fi

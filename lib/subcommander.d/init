@@ -31,5 +31,12 @@ if [ -e "$context_file" ]; then
 else
 	echo "Marking $context_dir as a $SUBCOMMANDER workspace."
 	echo "(Initializing context for $SUBCOMMANDER as $context_dir/$context_file)"
-	touch "$context_file"
+	fmt -p '#' > "$context_file" <<-EOF
+		#!/bin/false
+		# This file is sourced, not executed, by '$SUBCOMMANDER', which is a
+		# shell script. The existence of this file marks this directory and
+		# every directory within as a workarea or 'context' for
+		# '$SUBCOMMANDER'. Variables exported below will become available to
+		# all of $SUBCOMMANDER's subcommands.
+	EOF
 fi

@@ -12,9 +12,9 @@
 # executable named $0.d/$1 or $0.d/$1.* to execute.
 
 export SUBCOMMANDER="${0##*/}"
-export SUBCOMMANDER_DIR="$0.d"
+export SC_EXEC_PATH="$0.d"
 
-# FIXME: My convention for $SUBCOMMANDER_DIR isn't very unix-y. Most tools, if
+# FIXME: My convention for $SC_EXEC_PATH isn't very unix-y. Most tools, if
 # installed in /usr/bin, would keep their executable sub-scripts in
 # "/usr/lib/$0/". C.f. /usr/lib/xscreensaver/, /usr/lib/git-core/.
 
@@ -30,13 +30,13 @@ export SUBCOMMANDER_DIR="$0.d"
 # FIXME: This will be a lot more impressive if I can rig up an automatic
 # bash-completion helper. TODO implement as a subcommand like 'help'.
 
-context_envname="`echo $SUBCOMMANDER|tr 'a-z ' 'A-Z_'`_CONTEXT"
+SC_CTX_ENVNAME="`echo $SUBCOMMANDER|tr 'a-z ' 'A-Z_'`_CONTEXT"
 
 usage () { cat <<-END
 		usage: $SUBCOMMANDER COMMAND [OPTION...] [ARG]...
 		
 		OPTION may be one of:
-		    -f Abort if the current context does not match \$$context_envname
+		    -f Abort if the current context does not match \$$SC_CTX_ENVNAME
 		    -q Be quiet
 		    -s Do not perform context discovery
 		    -v Be more verbose
@@ -105,7 +105,7 @@ usage () { cat <<-END
 
 context_mismatch_action='warn'
 verbose=
-eval "environment_context=\$$context_envname"
+eval "environment_context=\$$SC_CTX_ENVNAME"
 
 while getopts sfqv f
 do
@@ -135,9 +135,9 @@ abort () {
 }
 usage_abort () {
 	usage
-	if [ -x "$SUBCOMMANDER_DIR/help" ]; then
+	if [ -x "$SC_EXEC_PATH/help" ]; then
 		echo
-		"$SUBCOMMANDER_DIR/help"
+		"$SC_EXEC_PATH/help"
 	fi
 	echo
 	abort $1
@@ -149,7 +149,7 @@ usage_abort () {
 END
 
 subcommandbase="$1"
-subcommand="$SUBCOMMANDER_DIR/$1"
+subcommand="$SC_EXEC_PATH/$1"
 shift; subcommandargs="$@"
 
 # Find the nearest context file in the directory hierarchy.
@@ -163,7 +163,7 @@ if [ "$environment_context" ]; then
 	environment_contextfile="$environment_context/.$SUBCOMMANDER.context"
 
 	[ -f "$environment_contextfile" ] || abort 3 <<-END
-		The context specified by $context_envname does not exist:
+		The context specified by $SC_CTX_ENVNAME does not exist:
 		$environment_contextfile not found.
 	END
 fi
@@ -172,7 +172,7 @@ fi
 if [ "$environment_contextfile" -a "$discovered_contextfile" ]; then
 	if [ ! "$environment_contextfile" -ef "$discovered_contextfile" ]; then
 		warn <<-END
-			Warning: Context specified by $context_envname=$environment_context
+			Warning: Context specified by $SC_CTX_ENVNAME=$environment_context
 			differs from and overrides context discovered at $discovered_context.
 			Be sure that this is what you intend.
 		END
@@ -193,6 +193,7 @@ if [ "$contextfile" ]; then
 	set -a
 	. "$contextfile"
 	set +a
+	context=${contextfile%/.*}
 else
 	[ "$verbose" ] && echo Note: no context was found. | warn
 fi
@@ -205,5 +206,7 @@ fi
 END
 
 # Launch subcommand.
-export contextfile
+export verbose
+export SC_CTX_ENVNAME
+eval "export $SC_CTX_ENVNAME='$context'"
 exec "$subcommand" "$subcommandargs"

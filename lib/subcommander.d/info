@@ -1,17 +1,24 @@
 #!/bin/sh
 
 # Description: Prints some information about the environment.
-
-echo "$SUBCOMMANDER called $0 with arguments:"
-echo $1
-echo $2
-echo $3
-echo $4
-echo $5
-echo $6
-echo $7
-echo $8
-pwd
 echo
-echo Environment:
-printenv | sort
+echo "# The name of the subcommander-based tool:"
+echo "SUBCOMMANDER=$SUBCOMMANDER"
+echo
+echo "# The location where its subcommands live:"
+echo "SC_EXEC_PATH=$SC_EXEC_PATH"
+if [ $verbose ]; then
+	echo
+	echo "# The environment variable holding the context:"
+	echo "SC_CTX_ENVNAME=$SC_CTX_ENVNAME"
+fi
+echo
+eval "context=\$$SC_CTX_ENVNAME"
+if [ "$context" ]; then
+echo "# The current context:"
+echo "$SC_CTX_ENVNAME=$context"
+else
+	echo "# There is no current context defined. Or as git would say,"
+	echo "fatal: Not a $SUBCOMMANDER workspace (or any of the parent directories): .$SUBCOMMANDER.context"
+	exit 1
+fi
