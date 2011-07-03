@@ -2,14 +2,8 @@
 
 # subcommander
 #
-# Several advanced tools (like git, subversion, cvs, zip, even django-admin.py,
-# etc., follow a pattern where the main tool is called followed by a subcommand
-# argument specific to that system. This acts as a somewhat informal namespace
-# for executables.
-#
-# This script attempts to encapsulate this pattern. It first walks up the
-# directory tree looking for a .$0.context file to source. Then it looks for an
-# executable named $0.d/$1 or $0.d/$1.* to execute.
+# First walk up the directory tree looking for a .$0.context file to source.
+# Then it look for an executable named $0.d/$1 or $0.d/$1.* to execute.
 
 export SUBCOMMANDER="${0##*/}"
 export SC_EXEC_PATH="$0.d"
@@ -43,53 +37,6 @@ usage () { cat <<-END
 	END
 }
 
-# Setup: create a symlink to (or a copy of) this script in your ~/bin (which is
-# on your $PATH) named for your tool.
-# 
-# Then create a directory right next to it named that plus .d, this will hold
-# the sub-scripts.
-# 
-# In ~/.profile: export PATH=~/bin:$PATH
-# 
-# bin/
-# 	subcommander
-# 	mytool -> subcommander
-#	mytool.d/
-#
-# 'init' and 'help' are two subcommands included with subcommander that you
-# will probably want as well. Symlink to (or copy of) those from your scripts
-# directory.
-#
-# bin/
-# 	subcommander
-# 	mytool -> subcommander
-#	mytool.d/
-#     init -> ../subcommander.d/init
-#     help -> ../subcommander.d/help
-# 
-# Now you're ready to use your tool. It knows what directories it "owns" when
-# you 'init' them, by creating a file named for itself plus ".context":
-# 
-# foo/bar/
-#	baz1/
-#	baz2/
-#		quux/
-#
-# from foo/bar, 'mytool init' produces:
-#
-# foo/bar/
-#	baz1/
-#	baz2/
-#		quux/
-#	.mytool.context
-# 
-# Then, from anywhere within foo/bar:
-# 	'mytool status'
-# will source foo/bar/.mytool.context, and then execute ~/bin/mytool.d/status
-# with the following variables set:
-# 
-# TODO: finish this
-#
 # TODO: Integrate with prompt and/or window title? I wouldn't like that by
 # default, perhaps provide a hook mechanism.
 #
