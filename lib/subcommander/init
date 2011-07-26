@@ -11,7 +11,7 @@ if [ "$1" = "--help" ]; then
 		Mark the DIRECTORY for use as a workspace for $SUBCOMMAND.
 
 		Directories are $SUBCOMMAND workspaces if they contain a file
-		$context_file. $SUBCOMMAND sources this file for every invocation.
+		$context_file. $SUBCOMMAND executes this file for every invocation.
 	EOF
 	exit
 fi
@@ -32,11 +32,20 @@ else
 	echo "Marking $context_dir as a $SUBCOMMANDER workspace."
 	echo "(Initializing context for $SUBCOMMANDER as $context_dir/$context_file)"
 	fmt -p '#' > "$context_file" <<-EOF
-		#!/bin/false
-		# This file is sourced, not executed, by '$SUBCOMMANDER', which is a
-		# shell script. The existence of this file marks this directory and
-		# every directory within as a workarea or 'context' for
-		# '$SUBCOMMANDER'. Variables exported below will become available to
-		# all of $SUBCOMMANDER's subcommands.
+		#!/bin/sh
+		# This file is a hook script executed by '$SUBCOMMANDER' every time you
+		# run a '$SUBCOMMANDER' command. The mere existence of a file with this
+		# name marks this directory and every directory within as a workarea or
+		# 'context' for '$SUBCOMMANDER'. This means you can edit this script,
+		# or replace it with your own executable script or compiled program, so
+		# long as you take care to exec() the command passed in as arguments,
+		# as is done below.
+
+		# If you have hooks to execute or customizations to make to the
+		# environment, you may do so here.
+
+		exec "\$@"
+		# Execution never returns from 'exec'; this line will never be reached.
 	EOF
+	chmod +x "$context_file"
 fi
