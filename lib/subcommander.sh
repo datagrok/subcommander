@@ -62,6 +62,13 @@ fi
 sc_ctx_envname="`echo $SC_MAIN|tr 'a-z ' 'A-Z_'`_CONTEXT"
 eval "my_exec_path=\${`echo $SC_NAME|tr 'a-z ' 'A-Z_'`_EXEC_PATH:='$0.d'}"
 
+if [ ! -d "$my_exec_path" ]; then
+	abort <<-END
+		Subcommands directory $my_exec_path does not exist. Place executable
+		files there to enable them as sub-commands of '$SC_NAME'.
+	END
+fi
+
 usage_abort () {
 	usage
 	if [ -x "$my_exec_path/help" ]; then
@@ -164,7 +171,7 @@ fi
 # TODO: Maybe if $subcommand not found, check also for executables named
 # $subcommand.py, $subcommand.sh, etc.
 [ -x "$subcommand" ] || abort <<-END
-	error: unknown $SC_MAIN command: $subcommandbase.
+	error: unknown $SC_NAME command: $subcommandbase.
 END
 
 # Launch subcommand.

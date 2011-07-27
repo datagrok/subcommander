@@ -7,41 +7,24 @@ set -e
 # "desc[ription]", optionally with a trailing : or =.
 
 # Calling:
-# 	$SUBCOMMANDER help command
+# 	$SC_NAME help command
 # is equivalent to:
-# 	$SUBCOMMANDER command --help
+# 	$SC_NAME command --help
 
 sc_exec_path="$(dirname $0)"
 
 if [ "$1" ]; then
 	command="$1"
 	shift
-	exec "$SUBCOMMANDER" "$command" --help "$@"
-elif [ -d "$sc_exec_path" ]; then
-	seen=
+	exec "$sc_exec_path/$command" --help "$@"
+else
+	echo "Available $SUBCOMMANDER commands are:"
 	for f in "$sc_exec_path"/*; do
 		[ -d "$f" ] && continue
 		[ -x "$f" ] || continue
-		[ $seen ] || {
-			echo "Available $SUBCOMMANDER commands are:"
-			seen=1
-		}
 		printf \
 			"   %-10s %s\n" \
 			"`basename \"$f\"`" \
 			"`sed -n 's/\$0/'$SUBCOMMANDER'/g;1,10s/^.\{0,4\}desc\(ription\)\?\s*[:=]\s*//Ip' \"$f\"`"
 	done
-	# FIXME this will never occur, because 'list' is in subcommands dir.
-	# consider moving list back into subcommander core script.
-	[ $seen ] || fmt <<-END
-		Subcommands directory $sc_exec_path contains no executables. Place
-		executable files here to enable them as sub-commands of '$SUBCOMMANDER'.
-	END
-else
-	# FIXME this will never occur, because 'list' is in subcommands dir.
-	# consider moving list back into subcommander core script.
-	fmt <<-END
-		Subcommands directory $sc_exec_path does not exist. Place executable
-		files there to enable them as sub-commands of '$SUBCOMMANDER'.
-	END
 fi
