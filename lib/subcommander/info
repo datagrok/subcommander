@@ -3,14 +3,15 @@
 set -e
 
 # Many of the discovery and variables within this script is duplicated in
-# subcommander proper, but I prefer that to forcing subcommander to needlessly
+# SC_MAIN proper, but I prefer that to forcing SC_MAIN to needlessly
 # export many environment variables.
 
-sc_env_prefix="`echo $SUBCOMMANDER|tr 'a-z ' 'A-Z_'`"
-sc_ctx_envname="${sc_env_prefix}_CONTEXT"
-eval "my_exec_path=\$${sc_env_prefix}_EXEC_PATH"
-sc_rcfile="$HOME/.$SUBCOMMANDER.rc"
-contextfile="$SC_CONTEXT/.$SUBCOMMANDER.context"
+ctx_envname="`echo $SC_MAIN|tr 'a-z ' 'A-Z_'`_CONTEXT"
+eval "exec_path=\${`echo $SC_NAME|tr 'a-z ' 'A-Z_'`_EXEC_PATH:='$0.d'}"
+sc_rcfile="$HOME/.$SC_MAIN.rc"
+if [ "$SC_CONTEXT" ]; then
+	contextfile="$SC_CONTEXT/.$SC_MAIN.context"
+fi
 
 fmt <<- EOF
 	The following variables (and only these) are added to the environment of
@@ -18,18 +19,20 @@ fmt <<- EOF
 
 	The name of this subcommander-based tool:
 
-	    SUBCOMMANDER=$SUBCOMMANDER
+	    SC_MAIN=$SC_MAIN
+
+	    SC_NAME=$SC_NAME
 
 	The current context:
 
 	    SC_CONTEXT=$SC_CONTEXT
 
-	$SUBCOMMANDER will execute the following, in order, if they exist and are
-	executable. These scripts or programs are *executed*, not sourced, and may
-	be implemented in any language. To function properly, both executables must
-	call or exec() their argument list. It is expected that the user may call
-	hook scripts or modify the environment within these programs before calling
-	the subcommand passed as the argument.
+	$SC_MAIN will execute the following, in order, before its first subcommand,
+	if they exist and are executable. Note that these are *executed*, not
+	sourced, and thus may be implemented in any language. To function properly,
+	both executables must call or exec() their argument list. It is expected
+	that the user may modify these in order to call hook scripts or modify the
+	environment.
 
 EOF
 
@@ -42,14 +45,23 @@ echo "               exists: $ans"
 echo "        is executable: $ans"
 echo
 
-echo "    $contextfile"
-echo
-[ -e "$contextfile" ] && ans='Yes' || ans='No'
-echo "               exists: $ans"
+if [ "$SC_CONTEXT" ]; then
+	echo "    $contextfile"
+	echo
+	[ -e "$contextfile" ] && ans='Yes' || ans='No'
+	echo "               exists: $ans"
 
-[ -x "$contextfile" ] && ans='Yes' || ans='No'
-echo "        is executable: $ans"
-echo
+	[ -x "$contextfile" ] && ans='Yes' || ans='No'
+	echo "        is executable: $ans"
+	echo
+else
+	fmt <<- EOF
+		Note: there is no current context defined. Or as git would say, "fatal:
+		Not a $SC_MAIN workspace (or any of the parent directories):
+		.$SC_MAIN.context"
+		
+	EOF
+fi
 
 cat <<- EOF
 	Other state information follows:
@@ -59,11 +71,3 @@ cat <<- EOF
 
 EOF
 
-
-if [ ! "$SC_CONTEXT" ]; then
-	cat <<- EOF
-		# Note: there is no current context defined. Or as git would say,
-		fatal: Not a $SUBCOMMANDER workspace (or any of the parent directories): .$SUBCOMMANDER.context
-	EOF
-	exit 1
-fi

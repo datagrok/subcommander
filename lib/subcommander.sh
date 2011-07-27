@@ -59,21 +59,21 @@ fi
 # CMC_EXEC_PATH. Multi-level tools use the main tool's context but will accept
 # their own exec_path. For example a sub-subcommander under 'cmc' called 'db'
 # would examine CMC_DB_EXEC_PATH
-sc_ctx_envname="`echo $SC_MAIN|tr 'a-z ' 'A-Z_'`_CONTEXT"
-eval "my_exec_path=\${`echo $SC_NAME|tr 'a-z ' 'A-Z_'`_EXEC_PATH:='$0.d'}"
+ctx_envname="`echo $SC_MAIN|tr 'a-z ' 'A-Z_'`_CONTEXT"
+eval "exec_path=\${`echo $SC_NAME|tr 'a-z ' 'A-Z_'`_EXEC_PATH:='$0.d'}"
 
-if [ ! -d "$my_exec_path" ]; then
+if [ ! -d "$exec_path" ]; then
 	abort <<-END
-		Subcommands directory $my_exec_path does not exist. Place executable
+		Subcommands directory $exec_path does not exist. Place executable
 		files there to enable them as sub-commands of '$SC_NAME'.
 	END
 fi
 
 usage_abort () {
 	usage
-	if [ -x "$my_exec_path/help" ]; then
+	if [ -x "$exec_path/help" ]; then
 		echo
-		"$my_exec_path/help"
+		"$exec_path/help"
 	fi
 	echo
 	abort $1
@@ -83,7 +83,7 @@ usage () { cat <<-END
 		usage: $SC_NAME COMMAND [OPTION...] [ARG]...
 		
 		OPTION may be one of:
-		    -f Abort if the current context does not match \$$sc_ctx_envname
+		    -f Abort if the current context does not match \$$ctx_envname
 		    -q Be quiet
 		    -s Do not perform context discovery
 		    -v Be more verbose
@@ -105,7 +105,7 @@ usage () { cat <<-END
 
 context_mismatch_action='warn'
 verbose=
-eval "environment_context=\$$sc_ctx_envname"
+eval "environment_context=\$$ctx_envname"
 
 while getopts sfqv f
 do
@@ -128,7 +128,7 @@ shift $(($OPTIND - 1))
 END
 
 subcommandbase="$1"
-subcommand="$my_exec_path/$1"
+subcommand="$exec_path/$1"
 shift
 
 # Find the nearest context file in the directory hierarchy.
@@ -143,7 +143,7 @@ if [ "$environment_context" ]; then
 	environment_contextfile="$environment_context/.$SC_MAIN.context"
 
 	[ -f "$environment_contextfile" ] || abort 3 <<-END
-		The context specified by $sc_ctx_envname does not exist:
+		The context specified by $ctx_envname does not exist:
 		$environment_contextfile not found.
 	END
 fi
@@ -152,7 +152,7 @@ fi
 if [ "$environment_contextfile" -a "$discovered_contextfile" ]; then
 	if [ ! "$environment_contextfile" -ef "$discovered_contextfile" ]; then
 		warn <<-END
-			Warning: Context specified by $sc_ctx_envname=$environment_context
+			Warning: Context specified by $ctx_envname=$environment_context
 			differs from and overrides context discovered at $discovered_context.
 			Be sure that this is what you intend.
 		END
