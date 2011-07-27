@@ -7,40 +7,73 @@ set -e
 # First walk up the directory tree looking for a .$0.context file to source.
 # Then it look for an executable named $0.d/$1 or $0.d/$1.* to execute.
 
-# SUBCOMMANDER holds the basename of the tool implemented by subcommander. For
-# example, if 'cmc' is a symlink to subcommander.sh, SUBCOMMANDER=cmc. If this
-# is a multi-level invocation of subcommander, use the original's rc files etc.
-if [ ! "$SUBCOMMANDER" ]; then
-	SUBCOMMANDER="${0##*/}"
+# SC_MAIN holds the basename of the tool implemented by subcommander. For
+# example, if 'cmc' is a symlink to subcommander.sh, SC_MAIN=cmc. If this is a
+# multi-level invocation of subcommander, we use the original's rc files etc.
+# and set SC_NAME to a space-separated list of all the sub-invocations. So:
+# SC_MAIN = the main tool, like 'git'
+# SC_NAME = the sub-sub commands as a list, like 'git stash pop'
+
+# SC_SUBLEVEL is a flag we use to differentiate between subcommander calling
+# itself as part of a heiarchy and subcommander calling some other
+# subcommander-implemented tool from one of its subcommands. It is only set if
+# this script detects that the one it is about to call is a symlink to the same
+# place it itself is. FIXME TODO is this sufficient?
+
+if [ "$SC_SUBLEVEL" ]; then
+	unset SC_SUBLEVEL
+	SC_NAME="$SC_NAME ${0##*/}"
+	# If we're a sub-invocation, don't bounce through the rcfile.
+	sc_rcfile=
+	skip_context_discovery=1
+else
+	export SC_MAIN="${0##*/}"
+	export SC_NAME="$SC_MAIN"
+	sc_rcfile="$HOME/.$SC_MAIN.rc"
 fi
-sc_rcfile="$HOME/.$SUBCOMMANDER.rc"
 
-# FIXME: My convention for $my_exec_path isn't very unix-y. Most tools, if
-# installed in /usr/bin, would keep their executable sub-scripts in
-# "/usr/lib/$0/". C.f. /usr/lib/xscreensaver/, /usr/lib/git-core/.
+# Functions which take messages as standard input
+warn () {
+	fmt >&2
+}
 
-# FIXME: Subcommander isn't expected to be executed under its original name;
-# perhaps it too should live in a 'lib' directory? Maybe TODO: detect if this
-# script is being run as 'subcommander' and output a message explaining that's
-# not expected and how to set up a new tool based on it.
+ignore () {
+	cat > /dev/null
+}
 
-# FIXME instead of symlinking to subcommander, could it be sourced instead? I
-# think I prefer the symlink convention because that enables subcommander to be
-# rewritten in any language.
+abort () {
+	warn; exit $1
+}
 
-# FIXME: This will be a lot more impressive if I can rig up an automatic
-# bash-completion helper. TODO implement as a subcommand like 'help'.
+if [ "$SC_MAIN" = "subcommander" -o "$SC_MAIN" = "subcommander.sh" ]; then
+	abort <<- EOF
+		Error: Subcommander is an abstraction that is not meant to be run under
+		its own name. Instead, create a symlink to it, with a different name.
+		And read the instructions.
+	EOF
+fi
 
 # Environment variables that may be used to configure each tool implemented by
 # subcommander. For example, if you have a tool named 'cmc' that is a symlink
 # to subcommander, it will obey the environment variables CMC_CONTEXT and
-# CMC_EXEC_PATH.
-sc_env_prefix="`echo $SUBCOMMANDER|tr 'a-z ' 'A-Z_'`"
-sc_ctx_envname="${sc_env_prefix}_CONTEXT"
-eval "my_exec_path=\${${sc_env_prefix}_EXEC_PATH:='$0.d'}"
+# CMC_EXEC_PATH. Multi-level tools use the main tool's context but will accept
+# their own exec_path. For example a sub-subcommander under 'cmc' called 'db'
+# would examine CMC_DB_EXEC_PATH
+sc_ctx_envname="`echo $SC_MAIN|tr 'a-z ' 'A-Z_'`_CONTEXT"
+eval "my_exec_path=\${`echo $SC_NAME|tr 'a-z ' 'A-Z_'`_EXEC_PATH:='$0.d'}"
+
+usage_abort () {
+	usage
+	if [ -x "$my_exec_path/help" ]; then
+		echo
+		"$my_exec_path/help"
+	fi
+	echo
+	abort $1
+}
 
 usage () { cat <<-END
-		usage: $SUBCOMMANDER COMMAND [OPTION...] [ARG]...
+		usage: $SC_NAME COMMAND [OPTION...] [ARG]...
 		
 		OPTION may be one of:
 		    -f Abort if the current context does not match \$$sc_ctx_envname
@@ -82,27 +115,6 @@ do
 done
 shift $(($OPTIND - 1))
 
-
-# Functions which take messages as standard input
-warn () {
-	fmt >&2
-}
-ignore () {
-	cat > /dev/null
-}
-abort () {
-	warn; exit $1
-}
-usage_abort () {
-	usage
-	if [ -x "$my_exec_path/help" ]; then
-		echo
-		"$my_exec_path/help"
-	fi
-	echo
-	abort $1
-}
-
 # Were we called with any arguments at all?
 [ $# -gt 0 ] || usage_abort 2 <<-END
 	No COMMAND specified.
@@ -110,18 +122,18 @@ END
 
 subcommandbase="$1"
 subcommand="$my_exec_path/$1"
-shift; subcommandargs="$@"
+shift
 
 # Find the nearest context file in the directory hierarchy.
 [ "$skip_context_discovery" ] || {
 	# it's ok if this fails.
-	discovered_contextfile=`acquire ".$SUBCOMMANDER.context"` || true
+	discovered_contextfile=`acquire ".$SC_MAIN.context"` || true
 	discovered_context="${discovered_contextfile%/*}"
 }
 
 # If context is manually set, ensure it exists.
 if [ "$environment_context" ]; then
-	environment_contextfile="$environment_context/.$SUBCOMMANDER.context"
+	environment_contextfile="$environment_context/.$SC_MAIN.context"
 
 	[ -f "$environment_contextfile" ] || abort 3 <<-END
 		The context specified by $sc_ctx_envname does not exist:
@@ -152,7 +164,7 @@ fi
 # TODO: Maybe if $subcommand not found, check also for executables named
 # $subcommand.py, $subcommand.sh, etc.
 [ -x "$subcommand" ] || abort <<-END
-	error: unknown $SUBCOMMANDER command: $subcommandbase.
+	error: unknown $SC_MAIN command: $subcommandbase.
 END
 
 # Launch subcommand.
@@ -191,5 +203,8 @@ else
 	contextfile=
 fi
 
-export SUBCOMMANDER SC_CONTEXT
-exec $sc_rcfile $contextfile "$subcommand" "$subcommandargs"
+if [ "$0" -ef "$subcommand" ]; then
+	SC_SUBLEVEL=1
+fi
+export SC_MAIN SC_NAME SC_CONTEXT SC_SUBLEVEL
+exec $sc_rcfile $contextfile "$subcommand" "$@"
