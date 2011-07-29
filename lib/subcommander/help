@@ -18,13 +18,13 @@ if [ "$1" ]; then
 	shift
 	exec "$sc_exec_path/$command" --help "$@"
 else
-	echo "Available $SUBCOMMANDER commands are:"
+	echo "Available $SC_NAME commands are:"
 	for f in "$sc_exec_path"/*; do
 		[ -d "$f" ] && continue
 		[ -x "$f" ] || continue
 		printf \
 			"   %-10s %s\n" \
 			"`basename \"$f\"`" \
-			"`sed -n 's/\$0/'$SUBCOMMANDER'/g;1,10s/^.\{0,4\}desc\(ription\)\?\s*[:=]\s*//Ip' \"$f\"`"
+			"`sed -n 's/\$0/'"$SC_NAME"'/g;1,10s/^.\{0,4\}desc\(ription\)\?\s*[:=]\s*//Ip' \"$f\"`"
 	done
 fi
