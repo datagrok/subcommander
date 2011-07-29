@@ -1,0 +1,18 @@
+#!/bin/sh
+# Description: Sets up bash completion for cmc, use in .bashrc: `eval cmc completion``
+set -e
+
+# FIXME: take args to do completion for different shells.
+
+# FIXME: enable multi-level completion
+
+sc_exec_path="$(dirname $0)"
+
+echo -n "complete -W \""
+for f in "$sc_exec_path"/*; do
+	[ -d "$f" ] && continue
+	[ -x "$f" ] || continue
+	echo -n `basename "$f"`" "
+done
+echo "\" $SC_MAIN"
+echo '# Add to .bashrc: eval `cmc completion`' 
