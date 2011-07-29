@@ -1,0 +1,8 @@
+#!/bin/sh
+# Description: Prints an error message and exits with error status if context is not available.
+set -e
+
+[ "$SC_CONTEXT" ] || {
+        echo "Error: this command needs to be run from within a $SC_MAIN context."
+        exit 1
+}

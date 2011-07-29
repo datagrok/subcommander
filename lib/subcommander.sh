@@ -18,17 +18,19 @@ set -e
 # itself as part of a heiarchy and subcommander calling some other
 # subcommander-implemented tool from one of its subcommands. It is only set if
 # this script detects that the one it is about to call is a symlink to the same
-# place it itself is. FIXME TODO is this sufficient?
+# place it itself is. FIXME TODO is this sufficient? Will break if one copies
+# rather than links to subcommander.
 
 if [ "$SC_SUBLEVEL" ]; then
-	unset SC_SUBLEVEL
 	SC_NAME="$SC_NAME ${0##*/}"
-	# If we're a sub-invocation, don't bounce through the rcfile.
+	# If we're a sub-invocation, inherit SC_MAIN, append ourselves to SC_NAME,
+	# don't do context discovery, don't bounce through the rcfile or the
+	# contextfile.
 	sc_rcfile=
-	skip_context_discovery=1
+	sc_contextfile=
 else
-	export SC_MAIN="${0##*/}"
-	export SC_NAME="$SC_MAIN"
+	SC_MAIN="${0##*/}"
+	SC_NAME="$SC_MAIN"
 	sc_rcfile="$HOME/.$SC_MAIN.rc"
 fi
 
@@ -72,6 +74,7 @@ fi
 usage_abort () {
 	usage
 	if [ -x "$exec_path/help" ]; then
+		export SC_MAIN SC_NAME
 		echo
 		"$exec_path/help"
 	fi
@@ -131,42 +134,6 @@ subcommandbase="$1"
 subcommand="$exec_path/$1"
 shift
 
-# Find the nearest context file in the directory hierarchy.
-[ "$skip_context_discovery" ] || {
-	# it's ok if this fails.
-	discovered_contextfile=`acquire ".$SC_MAIN.context"` || true
-	discovered_context="${discovered_contextfile%/*}"
-}
-
-# If context is manually set, ensure it exists.
-if [ "$environment_context" ]; then
-	environment_contextfile="$environment_context/.$SC_MAIN.context"
-
-	[ -f "$environment_contextfile" ] || abort 3 <<-END
-		The context specified by $ctx_envname does not exist:
-		$environment_contextfile not found.
-	END
-fi
-
-# If both are set, see if one differs from the other. (Possibly confused user.)
-if [ "$environment_contextfile" -a "$discovered_contextfile" ]; then
-	if [ ! "$environment_contextfile" -ef "$discovered_contextfile" ]; then
-		warn <<-END
-			Warning: Context specified by $ctx_envname=$environment_context
-			differs from and overrides context discovered at $discovered_context.
-			Be sure that this is what you intend.
-		END
-	fi
-fi
-
-# Prefer environment-specified context over discovered context.
-# TODO: prefer argument-specified context over both.
-if [ "$environment_contextfile" ]; then
-	contextfile="$environment_contextfile"
-elif [ "$discovered_contextfile" ]; then
-	contextfile="$discovered_contextfile"
-fi
-
 # Check to ensure subcommand is an executable
 # TODO: Maybe if $subcommand not found, check also for executables named
 # $subcommand.py, $subcommand.sh, etc.
@@ -174,44 +141,95 @@ fi
 	error: unknown $SC_NAME command: $subcommandbase.
 END
 
-# Launch subcommand.
+# If this is a multi-level invocation, don't do any context discovery or
+# examination, just inherit it.
+if [ ! "$SC_SUBLEVEL" ]; then
+	# Find the nearest context file in the directory hierarchy.
+	[ "$skip_context_discovery" ] || {
+		# it's ok if this fails.
+		discovered_contextfile=`acquire ".$SC_MAIN.context"` || true
+		discovered_context="${discovered_contextfile%/*}"
+	}
 
-if [ -x "$sc_rcfile" ]; then
-	# If you would like to specify a user-level configuration file and/or hook
-	# script, create it at $sc_rcfile and mark it executable.  It will be
-	# exec()d with arguments specifying the name and arguments of the command
-	# it should exec() in turn.
-	true # noop
-elif [ -e "$sc_rcfile" ]; then
-	# TODO FIXME create a trampoline that will source non-executable key/value pairs
-	echo "Warning: $sc_rcfile is not executable, and will be ignored" | warn
-else
-	# It is OK if $sc_rcfile does not exist.
-	sc_rcfile=
+	# If context is manually set, ensure it exists.
+	if [ "$environment_context" ]; then
+		environment_contextfile="$environment_context/.$SC_MAIN.context"
+
+		[ -f "$environment_contextfile" ] || abort 3 <<-END
+			The context specified by $ctx_envname does not exist:
+			$environment_contextfile not found.
+		END
+	fi
+
+	# If both are set, see if one differs from the other. (Possibly confused user.)
+	if [ "$environment_contextfile" -a "$discovered_contextfile" ]; then
+		if [ ! "$environment_contextfile" -ef "$discovered_contextfile" ]; then
+			warn <<-END
+				Warning: Context specified by $ctx_envname=$environment_context
+				differs from and overrides context discovered at $discovered_context.
+				Be sure that this is what you intend.
+			END
+		fi
+	fi
+
+	# Prefer environment-specified context over discovered context.
+	# TODO: prefer argument-specified context over both.
+	if [ "$environment_contextfile" ]; then
+		contextfile="$environment_contextfile"
+	elif [ "$discovered_contextfile" ]; then
+		contextfile="$discovered_contextfile"
+	fi
+
+	# Launch subcommand.
+	if [ -x "$sc_rcfile" ]; then
+		# If you would like to specify a user-level configuration file and/or hook
+		# script, create it at $sc_rcfile and mark it executable.  It will be
+		# exec()d with arguments specifying the name and arguments of the command
+		# it should exec() in turn.
+		true # noop
+	elif [ -e "$sc_rcfile" ]; then
+		# TODO FIXME create a trampoline that will source non-executable key/value pairs
+		echo "Warning: $sc_rcfile is not executable, and will be ignored" | warn
+	else
+		# It is OK if $sc_rcfile does not exist.
+		sc_rcfile=
+	fi
+
+	# If this is a sublevel, we don't want to bounce through the rcfile or the
+	# context file. We want to adopt the context found (or not) by the parent
+	# subcommander.
+
+	if [ -x "$contextfile" ]; then
+		SC_CONTEXT=${contextfile%/.*}
+		# Project-level configuration and/or hooks, are created by subcommander's
+		# included 'init' subcommand. It will be exec()d with arguments specifying
+		# the name and arguments of the command it should exec() in turn.
+
+		# TODO FIXME create a trampoline that will source non-executable key/value pairs
+	elif [ -e "$contextfile" ]; then
+		# TODO FIXME include a trampoline to handle non-executable files too.
+		# This is currently an abort.
+		echo "Context file $contextfile must be executable." | abort
+	else
+		# If the context does not exist, that's tolerable, we are simply not within
+		# a subcommander context. Subcommands should however be careful to act
+		# appropriately in this case.
+		[ "$verbose" ] && echo "Note: no context was found." | warn
+		SC_CONTEXT=
+		contextfile=
+	fi
 fi
 
-if [ -x "$contextfile" ]; then
-	SC_CONTEXT=${contextfile%/.*}
-	# Project-level configuration and/or hooks, are created by subcommander's
-	# included 'init' subcommand. It will be exec()d with arguments specifying
-	# the name and arguments of the command it should exec() in turn.
-
-	# TODO FIXME create a trampoline that will source non-executable key/value pairs
-elif [ -e "$contextfile" ]; then
-	# TODO FIXME include a trampoline to handle non-executable files too.
-	# This is currently an abort.
-	echo "Context file $contextfile must be executable." | abort
-else
-	# If the context does not exist, that's tolerable, we are simply not within
-	# a subcommander context. Subcommands should however be careful to act
-	# appropriately in this case.
-	[ "$verbose" ] && echo "Note: no context was found." | warn
-	SC_CONTEXT=
-	contextfile=
-fi
-
+# Is the subcommand we're about to execute also a subcommand? If so, tell it
+# that it should not do context discovery. If not, unset that flag (in case it
+# is already set in our environment)
 if [ "$0" -ef "$subcommand" ]; then
-	SC_SUBLEVEL=1
+	export SC_SUBLEVEL=1
+else
+	unset SC_SUBLEVEL
 fi
+
+# This is redundant, but serves to be a very explicit reminder of what
+# variables are available in the environment.
 export SC_MAIN SC_NAME SC_CONTEXT SC_SUBLEVEL
 exec $sc_rcfile $contextfile "$subcommand" "$@"
