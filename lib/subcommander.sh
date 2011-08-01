@@ -101,7 +101,7 @@ usage () { cat <<-END
 
 # Bash reminders:
 # 	${var##*/} is like `basename $var`
-#	${var%/.*} is like `dirname $var`
+#	${var%/*} is like `dirname $var`
 #   ${var%.*} removes one level of filename extension
 #   ${var%%.*} removes all filename extensions **
 #	** This will fail if you don't ensure there are no '.' in the path!
@@ -141,19 +141,31 @@ shift
 	error: unknown $SC_NAME command: $subcommandbase.
 END
 
+context_filename=".$SC_MAIN.context"
+
 # If this is a multi-level invocation, don't do any context discovery or
 # examination, just inherit it.
 if [ ! "$SC_SUBLEVEL" ]; then
 	# Find the nearest context file in the directory hierarchy.
 	[ "$skip_context_discovery" ] || {
 		# it's ok if this fails.
-		discovered_contextfile=`acquire ".$SC_MAIN.context"` || true
-		discovered_context="${discovered_contextfile%/*}"
+		cwd="$(pwd)"
+		discovered_context=
+		discovered_contextfile=
+		while true; do
+			if [ -e "$cwd/$context_filename" ]; then
+				discovered_context="${cwd:-/}"
+				discovered_contextfile="$cwd/$context_filename"
+				break
+			fi
+			[ "$cwd" ] || break # if this was root, stop.
+			cwd="${cwd%/*}" # go up one directory.
+		done
 	}
 
 	# If context is manually set, ensure it exists.
 	if [ "$environment_context" ]; then
-		environment_contextfile="$environment_context/.$SC_MAIN.context"
+		environment_contextfile="$environment_context/$context_filename"
 
 		[ -f "$environment_contextfile" ] || abort 3 <<-END
 			The context specified by $ctx_envname does not exist:
@@ -200,7 +212,7 @@ if [ ! "$SC_SUBLEVEL" ]; then
 	# subcommander.
 
 	if [ -x "$contextfile" ]; then
-		SC_CONTEXT=${contextfile%/.*}
+		SC_CONTEXT=${contextfile%/*}
 		# Project-level configuration and/or hooks, are created by subcommander's
 		# included 'init' subcommand. It will be exec()d with arguments specifying
 		# the name and arguments of the command it should exec() in turn.
