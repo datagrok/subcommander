@@ -1,0 +1,34 @@
+#!/bin/sh
+set -e
+# Description: insert lines given on stdin into the context file.
+#
+# Example: If you want to make some variable available to all commands that run
+# under your tool, you can edit your context file by hand. But if you want to
+# set that up using a script, no need to go mucking about with sed. (I already
+# have.) Do this:
+#
+#     echo "export SPLAT=1" | mytool .saveincontext
+
+
+out=`mktemp`
+cat > "$out"
+
+# TODO: detect that the context file is indeed still written in sh and contains
+# the 'exec' line we expect. Don't want to mess with it if someone replaces it
+# with something else.
+
+# FIXME: OMG this is soooo ugly. Golf this down into something more elegant.
+sed -ie "
+/^exec \"\$@\"/,\${
+	/^exec \"\$@\"/{
+		h
+		r $out
+		d
+	}
+	x
+	\$G
+}
+" "$SC_CONTEXT/.$SC_MAIN.context"
+
+# clean up the temporary file
+rm "$out"
