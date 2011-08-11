@@ -9,7 +9,6 @@ set -e
 #
 #     echo "export SPLAT=1" | mytool .saveincontext
 
-
 out=`mktemp`
 cat > "$out"
 
@@ -18,17 +17,19 @@ cat > "$out"
 # with something else.
 
 # FIXME: OMG this is soooo ugly. Golf this down into something more elegant.
-sed -ie "
-/^exec \"\$@\"/,\${
-	/^exec \"\$@\"/{
+# And! sed can't understand quotes around the filename? Let's hope it doesn't
+# contain spaces.
+sed -ie '
+/^exec "$@"/,${
+	/^exec "$@"/{
 		h
-		r $out
+		r '"$out"'
 		d
 	}
 	x
-	\$G
+	$G
 }
-" "$SC_CONTEXT/.$SC_MAIN.context"
+' "$SC_CONTEXT/.$SC_MAIN.context"
 
 # clean up the temporary file
 rm "$out"
