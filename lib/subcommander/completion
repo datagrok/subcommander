@@ -1,5 +1,5 @@
 #!/bin/sh
-# Description: Sets up bash completion for cmc, use in .bashrc: `eval cmc completion``
+# Description: Sets up tab-completion for $0, run for instructions
 set -e
 
 # FIXME: take args to do completion for different shells.
