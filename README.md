@@ -84,3 +84,20 @@ the `info` subcommand included with subcommander.
 		ln -s /path/to/subcommander ~/bin/mytool/
 		cd foo/bar
 		mytool info
+
+## Other tools like this one
+
+There are many tools that accomplish something similar. This is my defense
+against accusations of [NIH Syndrome][]. Here is a comparison of similar tools I
+have found, and the reason why I created this instead of using them.
+
+* [Wayne E. Seguin's BDSM][https://bdsm.beginrescueend.com/]: Too complex, no context discovery(?), nsfw docs make my eyes bleed.
+* [anandology/subcommand][https://github.com/anandology/subcommand]: Requires commands to be implemented in Python.
+* [jds/clik][https://github.com/jds/clik]: Requires commands to be implemented in Python.
+* [rkumar/subcommand][https://github.com/rkumar/subcommand]: Requires commands to be implemented in Ruby.
+* [reinh/commandant][https://github.com/reinh/commandant]: Requires commands to be implemented in Ruby.
+* [ander/subcommand][https://github.com/ander/subcommand]: Requires commands to be implemented in Ruby.
+* [tsantos/subcommander][https://github.com/tsantos/subcommander]: Requires commands to be implemented in Ruby.
+* [msassak/kerplutz][https://github.com/msassak/kerplutz]: I can't really figure it out but I think it's Ruby-only.
+
+[NIH Syndrome]: http://en.wikipedia.org/wiki/Not_Invented_Here
