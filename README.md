@@ -29,8 +29,9 @@ re-implement in both Python and C.
 
 1. Clone this repository somewhere on your system.
 
-2. If you don't have a ~/bin directory already, create it and add it to your
-   path in your .profile:
+2. If you don't have a `~/bin` directory already, create it and add it to your `PATH` environment variable. For example, in your `~/.profile`:
+
+		export PATH="$HOME/bin:$PATH"
 
 3. Create a symlink to (or a copy of) the subcommander.sh script in ~/bin named
    for your tool.
@@ -51,9 +52,27 @@ will probably want as well. Symlink to those from your scripts directory.
 				init -> /path/to/lib/subcommander/init
 				help -> /path/to/lib/subcommander/help
 
-5. Now you're ready to use your tool. It knows what directories it "owns" when
-   you 'init' them, by creating a file named for itself plus ".context". Given
-   this directory structure:
+Now you're ready to use your tool.
+
+## Useage
+
+Given the example setup above, running the command:
+
+		mytool status
+
+will execute ~/bin/mytool.d/status with some variables set into the execution
+environment. To see what variables are set by subcommander when it executes
+your tool, try the `info` subcommand included with subcommander.
+
+		ln -s /path/to/subcommander ~/bin/mytool/
+		cd foo/bar
+		mytool info
+
+### Automatic context discovery
+
+Subcommander-based tools know what directories they "own" when you 'init' them,
+by creating a file named for the tool plus ".context". So, given this directory
+structure:
 
 		foo/bar/
 			baz1/
@@ -68,22 +87,21 @@ From foo/bar, 'mytool init' produces:
 				quux/
 			.mytool.context
 
-Then, from anywhere within foo/bar:
+Then, from anywhere within foo/bar, running `mytool status` would execute
+~/bin/mytool.d/status` as before, with the following variables set:
 
-		mytool status
+		SC_NAME=mytool
+		SC_CONTEXT=foo/bar
 
-will source foo/bar/.mytool.context, and then execute ~/bin/mytool.d/status
-with the following variables set:
+If you would like to call hook scripts or set variables into the environment
+specific to your project, just add those commands to the context file
+`.mytool.context`. If you would like to hook into each invocation of your
+script regardless of context, you may also create an executable script named
+`~/.mytoolrc`.
 
-		SC_CONTEXT  # The path to the context, in this case foo/bar
-		SC_MAIN		# The basename of your tool
-
-To see what variables are set by subcommander when it executes your tool, try
-the `info` subcommand included with subcommander.
-
-		ln -s /path/to/subcommander ~/bin/mytool/
-		cd foo/bar
-		mytool info
+The context file is, by default, acutally an _executable shell script_. You can
+replace it with any executable, written in any language, as long as you follow
+its convention of executing (with `exec()`) its argument list.
 
 ## Other tools like this one
 
