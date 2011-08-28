@@ -21,6 +21,11 @@ set -e
 # place it itself is. FIXME TODO is this sufficient? Will break if one copies
 # rather than links to subcommander.
 
+# If you would like to specify a user-level configuration file and/or hook
+# script, create it at ~/.{toolname}rc and mark it executable. Like context
+# files, It will be passed arguments specifying the name and arguments of the
+# command it should exec() in turn.
+
 if [ "$SC_SUBLEVEL" ]; then
 	SC_NAME="$SC_NAME ${0##*/}"
 	# If we're a sub-invocation, inherit SC_MAIN, append ourselves to SC_NAME,
@@ -31,7 +36,7 @@ if [ "$SC_SUBLEVEL" ]; then
 else
 	SC_MAIN="${0##*/}"
 	SC_NAME="$SC_MAIN"
-	sc_rcfile="$HOME/.$SC_MAIN.rc"
+	sc_rcfile="$HOME/.${SC_MAIN}rc"
 fi
 
 # Functions which take messages as standard input
@@ -53,6 +58,20 @@ if [ "$SC_MAIN" = "subcommander" -o "$SC_MAIN" = "subcommander.sh" ]; then
 		its own name. Instead, create a symlink to it, with a different name.
 		And read the instructions.
 	EOF
+fi
+
+# If sc_rcfile exists, we want it to apply as early as possible, so that we
+# might even specify things like TOOL_EXEC_PATH inside.
+if [ ! "$SC_IGNORE_RCFILE" ]; then
+	# Set a flag to avoid doing this again.
+	export SC_IGNORE_RCFILE=1
+	if [ -x "$sc_rcfile" ]; then
+		exec "$sc_rcfile" "$0" "$@"
+	elif [ -e "$sc_rcfile" ]; then
+		# TODO FIXME create a trampoline that will source non-executable
+		# key/value pairs
+		echo "Warning: $sc_rcfile is not executable, and will be ignored" | warn
+	fi
 fi
 
 # Environment variables that may be used to configure each tool implemented by
@@ -192,21 +211,6 @@ if [ ! "$SC_SUBLEVEL" ]; then
 		contextfile="$discovered_contextfile"
 	fi
 
-	# Launch subcommand.
-	if [ -x "$sc_rcfile" ]; then
-		# If you would like to specify a user-level configuration file and/or hook
-		# script, create it at $sc_rcfile and mark it executable.  It will be
-		# exec()d with arguments specifying the name and arguments of the command
-		# it should exec() in turn.
-		true # noop
-	elif [ -e "$sc_rcfile" ]; then
-		# TODO FIXME create a trampoline that will source non-executable key/value pairs
-		echo "Warning: $sc_rcfile is not executable, and will be ignored" | warn
-	else
-		# It is OK if $sc_rcfile does not exist.
-		sc_rcfile=
-	fi
-
 	# If this is a sublevel, we don't want to bounce through the rcfile or the
 	# context file. We want to adopt the context found (or not) by the parent
 	# subcommander.
@@ -244,4 +248,4 @@ fi
 # This is redundant, but serves to be a very explicit reminder of what
 # variables are available in the environment.
 export SC_MAIN SC_NAME SC_CONTEXT SC_SUBLEVEL
-exec $sc_rcfile $contextfile "$subcommand" "$@"
+exec $contextfile "$subcommand" "$@"

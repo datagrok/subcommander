@@ -8,7 +8,7 @@ set -e
 
 ctx_envname="`echo $SC_MAIN|tr 'a-z ' 'A-Z_'`_CONTEXT"
 eval "exec_path=\${`echo $SC_NAME|tr 'a-z ' 'A-Z_'`_EXEC_PATH:='$0.d'}"
-sc_rcfile="$HOME/.$SC_MAIN.rc"
+sc_rcfile="$HOME/.${SC_MAIN}rc"
 if [ "$SC_CONTEXT" ]; then
 	contextfile="$SC_CONTEXT/.$SC_MAIN.context"
 fi
