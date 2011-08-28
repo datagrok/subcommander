@@ -2,7 +2,7 @@
 
 Do you have a collection of tools and scripts that you've written to save time
 at the command line? Is it hard to keep them documented, and difficult for new
-teammates to get familiar with them? Subcommander is here to help.
+teammates to get familiar with them?  Subcommander is here to help.
 
 Several familiar tools (like git, subversion, cvs, zip, even django-admin.py,
 etc., follow a pattern where the main executable is invoked with an argument
@@ -25,79 +25,152 @@ any language. Subcommander itself happens to be implemented in shell script,
 but this should make no difference to the user. The author plans to
 re-implement in both Python and C.
 
-## Setup
+## Install
 
-1. Clone this repository somewhere on your system.
+Clone this repository somewhere on your system.
 
-2. If you don't have a `~/bin` directory already, create it and add it to your `PATH` environment variable. For example, in your `~/.profile`:
+## Example Configuration
 
-		export PATH="$HOME/bin:$PATH"
+Let's pretend that you have a collection of scripts in your `~/bin` directory that you use while working on your project: `proj_runserver`, `proj_db_start`, `proj_db_stop`, and `proj_deploy`. Let's use subcommander to clean this up a bit, and create a single tool named `proj`.
 
-3. Create a symlink to (or a copy of) the subcommander.sh script in ~/bin named
-   for your tool.
+1. Create a symlink to (or a copy of) the subcommander.sh script in ~/bin named
+   `proj`.
 
-4. Create a directory right next to it named that plus .d. This will hold the
-   sub-scripts. You should now have:
+   		$ ln -s /path/to/lib/subcommander.sh ~/bin/proj
+
+2. At this point, running `proj` will already produce useful information:
+
+		$ proj
+		Subcommands directory ~/bin/proj.d does not exist. Place executable
+		files there to enable them as sub-commands of 'proj'.
+
+3. Create a directory right next to `proj` named `proj.d`. This will hold all the
+   sub-scripts.
+
+   		$ mkdir ~/bin/proj.d
+
+4. You should now have:
 
 		bin/
-			mytool -> /path/to/lib/subcommander.sh
-			mytool.d/
+			proj -> /path/to/lib/subcommander.sh
+			proj.d/
 
-4. 'init' and 'help' are two subcommands included with subcommander that you
-will probably want as well. Symlink to those from your scripts directory.
+5. `help` is a subcommand included with subcommander that you will probably want as well. Symlink to it from your scripts directory.
+
+		$ ln -s /path/to/lib/subcommander/help ~/bin/proj.d/
+
+4. You should now have:
 
 		bin/
-			mytool -> /path/to/lib/subcommander.sh
-			mytool.d/
-				init -> /path/to/lib/subcommander/init
+			proj -> /path/to/lib/subcommander.sh
+			proj.d/
 				help -> /path/to/lib/subcommander/help
 
-Now you're ready to use your tool.
+4. Now, running `proj` produces:
 
-## Useage
+		$ proj
+		usage: proj COMMAND [OPTION...] [ARG]...
 
-Given the example setup above, running the command:
+		Available proj commands are:
+		   help                 Lists the available sub-commands (this text)
 
-		mytool status
+		No COMMAND specified.
 
-will execute ~/bin/mytool.d/status with some variables set into the execution
-environment. To see what variables are set by subcommander when it executes
-your tool, try the `info` subcommand included with subcommander.
+Pretty good for two symlinks and a directory, eh?
 
-		ln -s /path/to/subcommander ~/bin/mytool/
-		cd foo/bar
-		mytool info
+5. Let's move your scripts into that scripts directory. Since we have a nice namespace, we can make their names a bit less verbose.
+
+		$ mv ~/bin/proj_runserver ~/bin/proj.d/runserver
+		$ mv ~/bin/proj_db_start ~/bin/proj.d/db_stop
+		$ mv ~/bin/proj_db_stop ~/bin/proj.d/db_stop
+		$ mv ~/bin/proj_deploy ~/bin/proj.d/deploy
+		$ proj
+		usage: proj COMMAND [OPTION...] [ARG]...
+
+		Available proj commands are:
+		   db_start
+		   db_stop
+		   deploy
+		   help                 Lists the available sub-commands (this text)
+		   runserver
+
+		No COMMAND specified.
+
+		$ proj db_start
+		Starting the database...
+
+## Improvements for subcommander-based sub-scripts
+
+### Automatic descriptive text
+
+Subcommander's `help` script has some built-in logic for pulling short descriptive text out of your scripts for display in the list of available commands. It's super simple: just add a comment near the top of your script that begins with "Desc" or "description" followed by a colon or equals, and a short line of text. Continuing with the examples above, let's add comments like these to our scripts:
+
+		# Description: runs my server on port 8080
+
+		/* Description: starts the database
+		*/
+
+		// desc: stops the database
+
+		DESC=copies working directory up to server
+
+The result:
+
+		$ proj help
+		Available proj commands are:
+		   db_start             starts the database
+		   db_stop              stops the database
+		   deploy               copies working directory up to server
+		   help                 Lists the available sub-commands (this text)
+		   runserver            runs my server on port 8080
+
+### Developing and debugging with `info`
+
+To see what variables are set by subcommander when it executes your tool, try
+the `info` subcommand included with subcommander.
+
+		$ ln -s /path/to/lib/subcommander/info ~/bin/proj.d/
+		$ proj info
+
+### "I don't like `proj.d`"
+
+TODO: PROJ_EXEC_PATH
 
 ### Automatic context discovery
 
-Subcommander-based tools know what directories they "own" when you 'init' them,
-by creating a file named for the tool plus ".context". So, given this directory
-structure:
+Subcommander-based tools know what directories they "own", and the `init` script is included to make the setup of a context easy.
 
-		foo/bar/
-			baz1/
-			baz2/
-				quux/
+		$ ln -s /path/to/lib/subcommander/init ~/bin/proj.d/
 
-From foo/bar, 'mytool init' produces:
+Now, let's say you're working on a version of your project, with a directory structure like this:
 
-		foo/bar/
-			baz1/
-			baz2/
-				quux/
-			.mytool.context
+		devel/branch1/
+			module1/
+			module2/
+				feature/
 
-Then, from anywhere within foo/bar, running `mytool status` would execute
-~/bin/mytool.d/status` as before, with the following variables set:
+Within devel/branch1, `proj init` produces:
 
-		SC_NAME=mytool
-		SC_CONTEXT=foo/bar
+		devel/branch1/
+			module1/
+			module2/
+				feature/
+			.proj.context
+
+Then, from anywhere within devel/branch1, running any `proj` command would
+invoke it as before, but with the `SC_CONTEXT` environment variable set to `devel/branch1`.
+
+### Integration with virtualenv
+
+TODO
+
+### Hook scripts and environment variables
 
 If you would like to call hook scripts or set variables into the environment
 specific to your project, just add those commands to the context file
-`.mytool.context`. If you would like to hook into each invocation of your
+`.proj.context`. If you would like to hook into each invocation of your
 script regardless of context, you may also create an executable script named
-`~/.mytoolrc`.
+`~/.projrc`.
 
 The context file is, by default, acutally an _executable shell script_. You can
 replace it with any executable, written in any language, as long as you follow
