@@ -31,7 +31,7 @@ if [ -e "$context_file" ]; then
 else
 	echo "Marking $context_dir as a $SC_MAIN workspace."
 	echo "(Initializing context for $SC_MAIN as $context_dir/$context_file)"
-	fmt -p '#' > "$context_file" <<-EOF
+	cat > "$context_file" <<-EOF
 		#!/bin/sh
 		# This file is executed by '$SC_MAIN' every time you run a '$SC_MAIN'
 		# command. The mere existence of a file with this name marks this
