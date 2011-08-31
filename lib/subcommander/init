@@ -33,13 +33,12 @@ else
 	echo "(Initializing context for $SC_MAIN as $context_dir/$context_file)"
 	fmt -p '#' > "$context_file" <<-EOF
 		#!/bin/sh
-		# This file is a hook script executed by '$SC_MAIN' every time you run
-		# a '$SC_MAIN' command. The mere existence of a file with this name
-		# marks this directory and every directory within as a workarea or
-		# 'context' for '$SC_MAIN'. This means you can edit this script, or
-		# replace it with your own executable script or compiled program, so
-		# long as you take care to exec() the command passed in as arguments,
-		# as is done below.
+		# This file is executed by '$SC_MAIN' every time you run a '$SC_MAIN'
+		# command. The mere existence of a file with this name marks this
+		# directory and every directory within as a workarea or 'context' for
+		# '$SC_MAIN'. This means you can edit this script, or replace it with
+		# your own executable script or compiled program, so long as you take
+		# care to exec() the command passed in as arguments, as is done below.
 
 		# If you have hooks to execute or customizations to make to the
 		# environment, you may do so here.
