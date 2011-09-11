@@ -52,7 +52,7 @@ def list_subcommands(argv):
 
     '''
     print "Available {SC_NAME} commands are:".format(**os.environ)
-    for f in glob(os.path.join(dirname, '*')):
+    for f in sorted(glob(os.path.join(dirname, '*'))):
         basename = os.path.basename(f)
         if os.path.isdir(f):
             continue
