@@ -228,3 +228,12 @@ have found, and the reason why I created this instead of using them.
 * [msassak/kerplutz](https://github.com/msassak/kerplutz): I can't really figure it out but I think it's Ruby-only.
 
 [NIH Syndrome]: http://en.wikipedia.org/wiki/Not_Invented_Here
+
+## To Do:
+
+- I built a much more robust and featureful `inve` at work, that checks that you are within a virtualenv environment, provides docs and friendly error messages, etc. Get permission to release it here, or re-write.
+- Explore building unit tests for subcommander and subcommander-based tools using `chroot`. I would love some way to automatically verify whether or not all code paths in all of these scripts work perfectly on various unices-- Ubuntu, Debian, OS X, Arch, Red Hat.
+
+## License
+
+[AGPLv3](http://www.gnu.org/licenses/agpl.html). If you need something more corporate-friendly, contact me and I'll consider it.
