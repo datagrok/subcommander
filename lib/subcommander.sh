@@ -168,7 +168,7 @@ if [ ! "$SC_SUBLEVEL" ]; then
 	# Find the nearest context file in the directory hierarchy.
 	[ "$skip_context_discovery" ] || {
 		# it's ok if this fails.
-		cwd="$(pwd)"
+		cwd="$(pwd -P)"
 		discovered_context=
 		discovered_contextfile=
 		while true; do
