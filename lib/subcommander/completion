@@ -8,11 +8,11 @@ set -e
 
 sc_exec_path="$(dirname $0)"
 
-echo -n "complete -W \""
+echo "complete -W \"\c"
 for f in "$sc_exec_path"/*; do
 	[ -d "$f" ] && continue
 	[ -x "$f" ] || continue
-	echo -n `basename "$f"`" "
+	echo `basename "$f"`" \c"
 done
 echo "\" $SC_MAIN"
-echo '# Add to .bashrc: eval `cmc completion`' 
+echo '# Add to .bashrc: eval `'"$SC_MAIN"' completion`' 
