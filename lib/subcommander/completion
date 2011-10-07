@@ -15,4 +15,4 @@ for f in "$sc_exec_path"/*; do
 	echo `basename "$f"`" \c"
 done
 echo "\" $SC_MAIN"
-echo '# Add to .bashrc: eval `'"$SC_MAIN"' completion`' 
+echo '# Add to .bashrc: eval `'"$SC_MAIN"' completion`'

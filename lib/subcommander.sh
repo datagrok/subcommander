@@ -8,11 +8,11 @@ set -e
 # Then it look for an executable named $0.d/$1 or $0.d/$1.* to execute.
 
 # SC_MAIN holds the basename of the tool implemented by subcommander. For
-# example, if 'mytool' is a symlink to subcommander.sh, SC_MAIN=mytool. If this is a
-# multi-level invocation of subcommander, we use the original's rc files etc.
-# and set SC_NAME to a space-separated list of all the sub-invocations. So:
-# SC_MAIN = the main tool, like 'git'
-# SC_NAME = the sub-sub commands as a list, like 'git stash pop'
+# example, if 'mytool' is a symlink to subcommander.sh, SC_MAIN=mytool. If this
+# is a multi-level invocation of subcommander, we use the original's rc files
+# etc. and set SC_NAME to a space-separated list of all the sub-invocations.
+# So: SC_MAIN = the main tool, like 'git' SC_NAME = the sub-sub commands as a
+# list, like 'git stash pop'
 
 # SC_SUBLEVEL is a flag we use to differentiate between subcommander calling
 # itself as part of a heiarchy and subcommander calling some other
@@ -75,11 +75,11 @@ if [ ! "$SC_IGNORE_RCFILE" ]; then
 fi
 
 # Environment variables that may be used to configure each tool implemented by
-# subcommander. For example, if you have a tool named 'mytool' that is a symlink
-# to subcommander, it will obey the environment variables MYTOOL_CONTEXT and
-# MYTOOL_EXEC_PATH. Multi-level tools use the main tool's context but will accept
-# their own exec_path. For example a sub-subcommander under 'mytool' called 'db'
-# would examine MYTOOL_DB_EXEC_PATH
+# subcommander. For example, if you have a tool named 'mytool' that is a
+# symlink to subcommander, it will obey the environment variables
+# MYTOOL_CONTEXT and MYTOOL_EXEC_PATH. Multi-level tools use the main tool's
+# context but will accept their own exec_path. For example a sub-subcommander
+# under 'mytool' called 'db' would examine MYTOOL_DB_EXEC_PATH
 ctx_envname="`echo $SC_MAIN|tr 'a-z ' 'A-Z_'`_CONTEXT"
 eval "exec_path=\${`echo $SC_NAME|tr 'a-z ' 'A-Z_'`_EXEC_PATH:='$0.d'}"
 
