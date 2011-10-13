@@ -9,10 +9,8 @@ set -e
 sc_exec_path="$(dirname $0)"
 
 echo "complete -W \"\c"
-for f in "$sc_exec_path"/*; do
-	[ -d "$f" ] && continue
-	[ -x "$f" ] || continue
-	echo `basename "$f"`" \c"
+$SC_MAIN help --porcelain | sed -e 's/:.*//' | while read cmd; do
+	echo "$cmd \c"
 done
 echo "\" $SC_MAIN"
 echo '# Add to .bashrc: eval `'"$SC_MAIN"' completion`'
