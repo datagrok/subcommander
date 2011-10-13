@@ -46,27 +46,44 @@ def exec_sub_help(argv):
     args.insert(0, '--help')
     os.execvp(os.path.join(dirname, command), args)
 
-def list_subcommands(argv):
+def list_subcommands():
     '''Walk through our sibling executables, displaying their name and their
     descriptive string.
 
     '''
-    print "Available {SC_NAME} commands are:".format(**os.environ)
     for f in sorted(glob(os.path.join(dirname, '*'))):
         basename = os.path.basename(f)
         if os.path.isdir(f):
             continue
         if not os.access(f, os.R_OK|os.X_OK):
             continue
+        if basename.startswith('_'):
+            continue
         description = get_description(f)
         description = description.replace('$0', os.environ['SC_NAME'])
+        description = description.replace('$1', basename)
+        yield basename, description
+
+def porcelain():
+    '''Give the output in a stable, easy-to-parse format for scripts.'''
+    for basename, description in list_subcommands():
+        print '%s:%s' % (basename, description)
+
+def usage():
+    print "usage: {SC_NAME} COMMAND [ARGS...]".format(**os.environ)
+    print
+    print "Available {SC_NAME} commands are:".format(**os.environ)
+    for basename, description in list_subcommands():
         print '    %-20s %s' % (basename, description)
 
 def main(argv):
     if len(argv) > 1:
-        exec_sub_help(argv)
+        if argv[1] == '--porcelain':
+            porcelain()
+        else:
+            exec_sub_help(argv)
     else:
-        list_subcommands(argv)
+        usage()
 
 if __name__=='__main__':
     sys.exit(main(sys.argv))

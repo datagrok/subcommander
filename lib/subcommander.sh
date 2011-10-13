@@ -91,25 +91,14 @@ if [ ! -d "$exec_path" ]; then
 fi
 
 usage_abort () {
-	usage
 	if [ -x "$exec_path/help" ]; then
 		export SC_MAIN SC_NAME
-		echo
 		"$exec_path/help"
+	else
+		echo "usage: $SC_NAME COMMAND [ARGS...]"
 	fi
 	echo
 	abort $1
-}
-
-usage () { cat <<-END
-		usage: $SC_NAME COMMAND [OPTION...] [ARG]...
-		
-		OPTION may be one of:
-		    -f Abort if the current context does not match \$$ctx_envname
-		    -q Be quiet
-		    -s Do not perform context discovery
-		    -v Be more verbose
-	END
 }
 
 # TODO: Integrate with prompt and/or window title? I wouldn't like that by
@@ -125,24 +114,7 @@ usage () { cat <<-END
 #   ${var%%.*} removes all filename extensions **
 #	** This will fail if you don't ensure there are no '.' in the path!
 
-context_mismatch_action='warn'
-verbose=
 eval "environment_context=\$$ctx_envname"
-
-while getopts sfqv f
-do
-	case "$f" in
-		s)	skip_context_discovery=1
-			;;
-		f)	context_mismatch_action='abort'
-			;;
-		q)	context_mismatch_action='ignore'
-			verbose=
-			;;
-		v)	verbose=1
-	esac
-done
-shift $(($OPTIND - 1))
 
 # Were we called with any arguments at all?
 [ $# -gt 0 ] || usage_abort 2 <<-END
@@ -165,22 +137,20 @@ context_filename=".$SC_MAIN.context"
 # If this is a multi-level invocation, don't do any context discovery or
 # examination, just inherit it.
 if [ ! "$SC_SUBLEVEL" ]; then
-	# Find the nearest context file in the directory hierarchy.
-	[ "$skip_context_discovery" ] || {
-		# it's ok if this fails.
-		cwd="$(pwd -P)"
-		discovered_context=
-		discovered_contextfile=
-		while true; do
-			if [ -e "$cwd/$context_filename" ]; then
-				discovered_context="${cwd:-/}"
-				discovered_contextfile="$cwd/$context_filename"
-				break
-			fi
-			[ "$cwd" ] || break # if this was root, stop.
-			cwd="${cwd%/*}" # go up one directory.
-		done
-	}
+	# Find the nearest context file in the directory hierarchy. It's ok if this
+	# fails.
+	cwd="$(pwd -P)"
+	discovered_context=
+	discovered_contextfile=
+	while true; do
+		if [ -e "$cwd/$context_filename" ]; then
+			discovered_context="${cwd:-/}"
+			discovered_contextfile="$cwd/$context_filename"
+			break
+		fi
+		[ "$cwd" ] || break # if this was root, stop.
+		cwd="${cwd%/*}" # go up one directory.
+	done
 
 	# If context is manually set, ensure it exists.
 	if [ "$environment_context" ]; then
@@ -230,7 +200,6 @@ if [ ! "$SC_SUBLEVEL" ]; then
 		# If the context does not exist, that's tolerable, we are simply not within
 		# a subcommander context. Subcommands should however be careful to act
 		# appropriately in this case.
-		[ "$verbose" ] && echo "Note: no context was found." | warn
 		SC_CONTEXT=
 		contextfile=
 	fi
