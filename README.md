@@ -168,36 +168,18 @@ invoke it as before, but with the `SC_CONTEXT` environment variable set to `deve
 
 ### Integration with virtualenv
 
-I'm a Python programmer and frequently work with the excellent `virtualenv` program by Ian Bicking.
-
-Virtualenv is great on the whole but there is one glaring problem: it requires you to _source_ with your shell an `activate` script before you can work within a virtualenv environment. The `activate` script sets some environment variables in your _current_ environment and defines for you a _shell function_ called `deactivate` which will attempt to undo those changes.
-
-In my view, this is abhorrently wrong and un-unix-y. It suffers from a number of problems:
-
-- It breaks if you don't use a supported shell.
-- What do you do if you use no shell at all? (I.E. run programs in a virtualenv from a GUI.)
-- If the `deactivate` script fails to un-set an environment variable, it may contaminate other environments.
-- If you want to edit `deactivate` or any other function sourced into your environment, you have to kill your shell and re-source the script to see the changes take effect.
-- If you change the current directory from one to another virtual environment and forget to carefully 'deactivate' and 'activate' as you do so, you may end up using libraries from or making changes in the wrong one!
-
-Entering and exiting a virtual environment should be like using `ssh` to connect to another machine. When you're done, a simple `exit` should restore you to your original, unmodified environment.
-
-An example of a program that does this the Right Way is `ssh-agent`. In order to communicate the port that it listens on to other programs, it must set some variables into the environment. It provides an option to do what `virtualenv` does, but the better way is to simply ask `ssh-agent` to launch your command for you, with a modified environment. `ssh-agent $SHELL` will launch a sub-shell for you with its environment already modified appropriately for `ssh-agent`. Most Debian and Ubuntu machines even launch X11 this way; see `/etc/X11/Xsession.d/90x11-common_ssh-agent`.
-
-Part of my motivation for creating `subcommander` was so that it could be easier and *cleaner* to work with virtualenv environments.
-
-Examining `bin/activate`, we find that when using a subcommander-based tool along with virtualenv, much of the logic is unnecessary. Let's create a `proj` subcommand to replace `activate`. Recalling how `ssh-agent` works, we can call this `inve`, for "inside the virtual environment":
+I dislike the way virtualenv's `bin/activate` works; I prefer a system level tool that launches a subshell.  Such a method is described here: [Virtualenv's bin/activate is Doing It Wrong](https://gist.github.com/2199506). You can enable it for use with a subcommand script like this:
 
 		#!/bin/sh
 		export VIRTUAL_ENV="$SC_CONTEXT"
 		export PATH="$SC_CONTEXT/bin:$PATH"
 		unset PYTHON_HOME
-		exec "$@"
+		exec "${@-:$SHELL}"
 
-That's it. If you have already done `proj init` in the root of your virtualenv environment:
+If you have already done `proj init` in the root of your virtualenv environment:
 
 - `proj inve python` will run python as if it were being run after sourcing `bin/activate`.
-- To simulate `bin/activate` try `proj inve $SHELL`. Where you would normally use `deactivate`, just type CTRL+D or `exit`.
+- To simulate `bin/activate` try `proj inve`. Where you would normally use `deactivate`, just type CTRL+D or `exit`.
 - Now `pip` behaves as you would expect. `pip` installs to your system or user-level environment unless you call it like `proj inve pip`.
 
 ### Hook scripts and environment variables
