@@ -85,10 +85,21 @@ Pretty good for two symlinks and a directory, eh?
 5. Let's move your scripts into that scripts directory. Since we have a nice
    namespace, we can make their names a bit less verbose.
 
-        $ mv ~/bin/proj_runserver ~/bin/proj.d/runserver
-        $ mv ~/bin/proj_db_start ~/bin/proj.d/db_stop
+        $ mv ~/bin/proj_db_start ~/bin/proj.d/db_start
         $ mv ~/bin/proj_db_stop ~/bin/proj.d/db_stop
         $ mv ~/bin/proj_deploy ~/bin/proj.d/deploy
+        $ mv ~/bin/proj_runserver ~/bin/proj.d/runserver
+
+        $ tree ~/bin
+        ~/bin/
+        ├── proj -> /path/to/lib/subcommander.sh
+        └── proj.d/
+            ├── db_start
+            ├── db_stop
+            ├── deploy
+            ├── help -> /path/to/lib/subcommander/help
+            └── runserver
+
         $ proj
         usage: proj COMMAND [OPTION...] [ARG]...
 
@@ -134,6 +145,52 @@ The result:
            help                 Lists the available sub-commands (this text)
            runserver            runs my server on port 8080
 
+### Sub-sub-commands
+
+In the example above, we have two commands `db_start` and `db_stop` that could
+be further cleaned up. In the same way that we created the initial tool `proj`,
+we can also create a `proj db` which itself launches subcommands:
+
+        $ ln -s /path/to/lib/subcommander.sh ~/bin/proj.d/db
+        $ mkdir ~/bin/proj.d/db.d
+        $ mv ~/bin/proj.d/db_start ~/bin/proj.d/db.d/start
+        $ mv ~/bin/proj.d/db_stop ~/bin/proj.d/db.d/stop
+
+        $ tree ~/bin
+        ~/bin/
+        ├── proj -> /path/to/lib/subcommander.sh
+        └── proj.d/
+            ├── db -> /path/to/lib/subcommander.sh
+            ├── db.d/
+            │   ├── start
+            │   └── stop
+            ├── deploy
+            ├── help -> /path/to/lib/subcommander/help
+            └── runserver
+
+        $ proj
+        usage: proj COMMAND [OPTION...] [ARG]...
+
+        Available proj commands are:
+           db                   Runs subcommands
+           deploy               copies working directory up to server
+           help                 Lists the available sub-commands (this text)
+           runserver            runs my server on port 8080
+
+        No COMMAND specified.
+
+        $ proj db
+        usage: proj COMMAND [OPTION...] [ARG]...
+
+        Available proj db commands are:
+           start                starts the database
+           stop                 stops the database
+
+        No COMMAND specified.
+
+        $ proj db_start
+        Starting the database...
+
 ### Developing and debugging with `info`
 
 To see what variables are set by subcommander when it executes your tool, try
@@ -151,6 +208,11 @@ overridden by setting `PROJ_EXEC_PATH` in the environment.
 You don't need to edit your startup scripts to set this into the environment.
 Just add it to `~/.projrc`. See "Hook Scripts and Environment Variables" below
 for details.
+
+These names are dependent on what you name your tool. If instead of `proj` you
+called your tool `foo`, you would want to put subcommands in `foo.d`, use
+`FOO_EXEC_PATH` to override that location, and put `foo`-specific configuration
+in `~/.foorc`.
 
 ### Automatic context discovery
 
@@ -179,6 +241,22 @@ Then, from anywhere within `devel/branch1`, running any `proj` command would
 invoke it as before, but with the `SC_CONTEXT` environment variable set to
 `devel/branch1`.
 
+### Hook scripts and environment variables
+
+If you would like to call hook scripts or set variables into the environment
+specific to your project, just add those commands to the context file
+`.proj.context`. If you would like to hook into each invocation of your
+script regardless of context, you may also create an executable script named
+`~/.projrc`.
+
+The context file is, by default, acutally an _executable shell script_. You can
+replace it with any executable, written in any language, as long as you follow
+its convention of executing (with `exec()`) its argument list.
+
+These names are dependent on what you name your tool. If instead of `proj` you
+called your tool `foo`, your context file would be named `.foo.context`, and
+your rc file would be named `~/.foorc`.
+
 ### Integration with virtualenv
 
 I dislike the way virtualenv's `bin/activate` works; I prefer a system level
@@ -201,18 +279,6 @@ If you have already done `proj init` in the root of your virtualenv environment:
   `deactivate`, just type CTRL+D or `exit`.
 - Now `pip` behaves as you would expect. `pip` installs to your system or
   user-level environment unless you call it like `proj inve pip`.
-
-### Hook scripts and environment variables
-
-If you would like to call hook scripts or set variables into the environment
-specific to your project, just add those commands to the context file
-`.proj.context`. If you would like to hook into each invocation of your
-script regardless of context, you may also create an executable script named
-`~/.projrc`.
-
-The context file is, by default, acutally an _executable shell script_. You can
-replace it with any executable, written in any language, as long as you follow
-its convention of executing (with `exec()`) its argument list.
 
 ## Other tools like this one
 
@@ -243,4 +309,5 @@ have found, and the reason why I created this instead of using them.
 
 ## License
 
-[AGPLv3](http://www.gnu.org/licenses/agpl.html). If you need something more corporate-friendly, contact me and I'll consider it.
+[AGPLv3](http://www.gnu.org/licenses/agpl.html). If you need something more
+corporate-friendly, contact me and I'll consider it.
