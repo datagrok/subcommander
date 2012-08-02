@@ -142,4 +142,5 @@ def main(argv0, *args):
 
 if __name__ == '__main__':
     import sys
+    raise SystemExit('This version is not yet tested or anything, try subcommander.sh for now.')
     raise SystemExit(main(*sys.argv))
