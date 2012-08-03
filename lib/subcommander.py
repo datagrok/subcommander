@@ -9,6 +9,7 @@ same way.
 
 import os
 import warnings
+import subprocess
 
 
 def format_msg(s):
@@ -26,13 +27,12 @@ class CalledDirectlyError(EnvironmentError):
 
 
 class SubcommandDirectoryMissingError(EnvironmentError):
-    def __init__(self, exec_path, scmd_name):
+    def __init__(self, exec_path, os.environ['SC_NAME']):
         super(SubcommandDirectoryMissingError, self).__init__(
             2,
             format_msg("""
                 Subcommands directory does not exist. Place executable files
-                there to enable them as sub-commands of '%s'""" % (
-                    scmd_name)),
+                there to enable them as sub-commands"""),
             exec_path)
 
 
@@ -40,9 +40,15 @@ class SpecifiedContextNotFoundError(EnvironmentError):
     def __init__(self, ctx_envname, environment_contextfile):
         super(SubcommandDirectoryMissingError, self).__init__(
             3,
-            format_msg("""The context specified by %s does not exist""" % (
-                scmd_name)),
+            format_msg("The context specified by %s does not exist" %
+                ctx_envname),
             environment_contextfile)
+
+
+class NoCommandSpecifiedError(EnvironmentError):
+    def __init__(self, exec_path, os.environ['SC_NAME']):
+        super(SubcommandDirectoryMissingError, self).__init__(
+            2, format_msg("No COMMAND specified."))
 
 
 def discover_context(context_filename):
@@ -51,6 +57,11 @@ def discover_context(context_filename):
         context_file = os.path.sep.join(cwd[0:n] + [context_filename])
         if os.path.exists(context_file):
             return context_file
+
+
+def abort(status, msg):
+    print msg
+    raise SystemExit(status)
 
 
 def main(argv0, *args):
@@ -62,11 +73,11 @@ def main(argv0, *args):
     if is_subinvocation:
         name = '%s %s' % (os.environ['SC_NAME'], argv0_basename)
     else:
-        tool_name = argv0
-        scmd_name = argv0
+        os.environ['SC_MAIN'] = argv0
+        os.environ['SC_NAME'] = argv0
         rcfile = "%(HOME)s/.%(SC_MAIN)src" % os.environ
 
-    if tool_name.startswith('subcommander'):
+    if os.environ['SC_MAIN'].startswith('subcommander'):
         raise CalledDirectlyError
 
     if not os.environ.get('SC_IGNORE_RCFILE'):
@@ -76,8 +87,8 @@ def main(argv0, *args):
         elif os.access(s, os.R_OK):
             warnings.warn("%s is not executable, and will be ignored." % rcfile)
 
-    ctx_envname = '%s_CONTEXT' % tool_name.upper().replace(' ', '_')
-    exec_path_envname = '%s_EXEC_PATH' % scmd_name.upper().replace(' ', '_')
+    ctx_envname = ('%(SC_MAIN)s_CONTEXT' % os.environ).upper().replace(' ', '_')
+    exec_path_envname = ('%(SC_NAME)s_EXEC_PATH' % os.environ).upper().replace(' ', '_')
     exec_path = os.environ.get(exec_path_envname, '%s.d' % argv0)
 
     if not os.path.isdir(exec_path):
@@ -86,23 +97,30 @@ def main(argv0, *args):
     environment_context = os.environ.get(ctx_envname)
 
     if not args:
-        return "No COMMAND specified."
+        help_executable = '%s/help' % exec_path
+        if os.access(help_executable, os.R_OK|os.X_OK):
+            subprocess.call([help_executable])
+        else:
+            print "usage: %(SC_NAME)s COMMAND [ARGS...]" % os.environ
+        raise NoCommandSpecifiedError
 
     subcommandbase = args.pop(0)
     subcommand = os.path.join(exec_path, subcommandbase)
 
     if not os.access(subcommand, os.R_OK|os.X_OK)
-        return "Unknown %s command: %s" % (scmd_name, subcommandbase)
+        return "Unknown %s command: %s" % (os.environ['SC_NAME'], subcommandbase)
 
-    context_filename = ".%s.context" % tool_name
+    context_filename = ".%(SC_MAIN)s.context" % os.environ
 
     if not is_subinvocation:
         discovered_contextfile = discover_context(context_filename)
 
         if environment_context:
-            environment_contextfile = os.path.join([environment_context, context_filename])
+            environment_contextfile = os.path.join([
+                environment_context, context_filename])
             if not os.path.exists(environment_contextfile):
-                raise SpecifiedContextNotFoundError(ctx_envname, environment_contextfile)
+                raise SpecifiedContextNotFoundError(
+                        ctx_envname, environment_contextfile)
 
         if (environment_context and discovered_contextfile
                 and not os.path.samefile(
@@ -110,7 +128,7 @@ def main(argv0, *args):
             warnings.warn(format_msg("""
                 Context specified by %s=%s differs from and overrides context
                 discovered at %s. Be sure that this is what you intend.""" % (
-                    ctx_envname, environment_context, discovered_context)))
+                    ctx_envname, environment_context, discovered_contextfile)))
 
         if environment_contextfile:
             contextfile = environment_contextfile
@@ -118,11 +136,11 @@ def main(argv0, *args):
             contextfile = discovered_contextfile
 
         if os.access(subcommand, os.R_OK|os.X_OK):
-            context = os.path.dirname(contextfile)
+            os.environ['SC_CONTEXT'] = os.path.dirname(contextfile)
         elif os.access(subcommand, os.R_OK):
             raise EnvironmentError(4, "Context file must be executable", contextfile)
         else:
-            context = None
+            del os.environ['SC_CONTEXT']
             contextfile = None
 
     if os.path.samefile(argv0, subcommand):
@@ -132,10 +150,6 @@ def main(argv0, *args):
             del os.environ['SC_SUBLEVEL']
         except KeyError:
             pass
-
-    os.environ['SC_MAIN'] = tool_name
-    os.environ['SC_NAME'] = scmd_name
-    os.environ['SC_CONTEXT'] = context
 
     os.execv([contextfile, subcommand] + args)
 
