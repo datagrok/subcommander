@@ -251,7 +251,30 @@ script regardless of context, you may also create an executable script named
 
 The context file is, by default, acutally an _executable shell script_. You can
 replace it with any executable, written in any language, as long as you follow
-its convention of executing (with `exec()`) its argument list.
+its convention of executing (with `exec()`) its argument list. Here's a context
+file that sets one environment variable:
+
+    #!/bin/sh
+    export FOO_PATH="/tmp/foo"
+    exec "$@"
+
+Here it is again, in Python:
+
+    #!/usr/bin/python
+    import os
+    os.environ['FOO_PATH'] = '/tmp/foo'
+    os.execv(*sys.argv[1:])
+
+It doesn't even need to be a script. Here's a C program you can compile and use
+as a context file. (Though I can't imagine why anybody would do this.)
+
+    #include<stdio.h>
+    int main(int argc, char* argv) {
+        
+        execv(...)
+    }
+
+Now, whenever a script that lives in ~/bin/proj.d is run, # LEFT OFF HERE
 
 These names are dependent on what you name your tool. If instead of `proj` you
 called your tool `foo`, your context file would be named `.foo.context`, and
