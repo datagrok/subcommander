@@ -268,10 +268,11 @@ Here it is again, in Python:
 It doesn't even need to be a script. Here's a C program you can compile and use
 as a context file. (Though I can't imagine why anybody would do this.)
 
-    #include<stdio.h>
-    int main(int argc, char* argv) {
-        
-        execv(...)
+    #include <stdio.h>
+    int main(int argc, char *argv[])
+    {
+        setenv("FOO_PATH", "/tmp/foo", 1);
+        return execvp(argv[1], &(argv[1]));
     }
 
 Now, whenever a script that lives in ~/bin/proj.d is run, # LEFT OFF HERE
