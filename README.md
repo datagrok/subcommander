@@ -1,15 +1,25 @@
 # Subcommander
 
+Branch 'mkii':
+
+- Eliminate default .d directory; default to /usr/lib/blah or ~/usr/lib/blah
+- Perform recursive walk; don't rely on sub-symlinks to subcommander
+- implement in python
+- try for python 2.4/centos 5 compatibility (yuck)
+- creates rcfile if nonexistent
+- package so may be installed system-wide by package manager/pip/easy\_install,
+
+---
+
 Do you have a collection of tools and scripts that you've written to save time
 at the command line? Is it hard to keep them documented, and difficult for new
-teammates to get familiar with them?  Subcommander is here to help.
+teammates to get familiar with them? Subcommander is here to help.
 
 Several familiar tools (like git, subversion, cvs, zip, even django-admin.py,
 etc., follow a pattern where the main executable is invoked with an argument
 naming another executable specific to that system. For example, `git push`
 causes `git` to invoke `git-push`. This establishes a kind of "namespace" for
-executables. Subcommander provides a kind of framework for quickly building
-such executable namespaces.
+executables.
 
 Git also performs *context discovery* for its subcommands. Whenever git is
 invoked, the first thing it does is identify what git repository you intend for
@@ -18,12 +28,12 @@ tree. Subcommander apes this as well, allowing your disparate tools to have an
 easy way to determine the location of the root directory of the current
 context/project/checkout/virtualenv you are working with.
 
-Subcommander attempts to provide a simple way to encapsulate these patterns, so
-you can get your piles of disparate scripts organized. It intends to be
-**language agnostic**: all sub-commands and context files may be implemented in
-any number of languages. Subcommander itself happens to be implemented in shell
-script, but this should make no difference to the user. The author plans to
-re-implement in both Python and C.
+Subcommander attempts to provide a simple convention-based way to encapsulate
+these patterns, so you can get your piles of disparate scripts organized. It
+intends to be **language agnostic**: all sub-commands and context files may be
+implemented in any number of languages. Subcommander itself happens to be
+implemented in Python, but this should make no difference to the user. The
+author plans to re-implement the same functionality in C.
 
 ## Install
 
@@ -44,31 +54,37 @@ bit, and create a single tool named `proj`.
 2. At this point, running `proj` will already produce useful information:
 
         $ proj
-        Subcommands directory ~/bin/proj.d does not exist. Place executable
-        files there to enable them as sub-commands of 'proj'.
+        Subcommands directory ~/usr/lib/proj not found. Specify the path to
+        proj subcommands with the PROJ_EXEC_PATH environment variable.
 
-3. So, do what it recommends. Create a directory right next to `proj` named
-   `proj.d`. This will hold all the sub-scripts.
+3. So, do what it recommends. Create the directory `~/usr/lib/proj` to hold all
+   the sub-scripts:
 
-        $ mkdir ~/bin/proj.d
+        $ mkdir -p ~/usr/lib/proj
 
 4. You should now have:
 
-        bin/
-        ├── proj -> /path/to/lib/subcommander.sh
-        └── proj.d/
+        ~
+        ├── bin/
+        │   └── proj -> /path/to/lib/subcommander.sh
+        └── usr/
+            └── lib/
+                └── proj/
 
 5. `help` is a subcommand included with subcommander that you will probably
-   want as well. Symlink to it from your scripts directory.
+   want as well. Place a symlink (or copy) of it in your scripts directory.
 
-        $ ln -s /path/to/lib/subcommander/help ~/bin/proj.d/
+        $ ln -s /path/to/lib/subcommander/help ~/usr/lib/proj/
 
 4. You should now have:
 
-        bin/
-        ├── proj -> /path/to/lib/subcommander.sh
-        └── proj.d/
-            └── help -> /path/to/lib/subcommander/help
+        ~
+        ├── bin/
+        │   └── proj -> /path/to/lib/subcommander.sh
+        └── usr/
+            └── lib/
+                └── proj/
+                    └── help -> /path/to/lib/subcommander/help
 
 4. Now, running `proj` produces:
 
@@ -80,25 +96,28 @@ bit, and create a single tool named `proj`.
 
         No COMMAND specified.
 
-Pretty good for two symlinks and a directory, eh?
+Pretty good for two symlinks and a couple directories, eh?
 
 5. Let's move your scripts into that scripts directory. Since we have a nice
    namespace, we can make their names a bit less verbose.
 
-        $ mv ~/bin/proj_db_start ~/bin/proj.d/db_start
-        $ mv ~/bin/proj_db_stop ~/bin/proj.d/db_stop
-        $ mv ~/bin/proj_deploy ~/bin/proj.d/deploy
-        $ mv ~/bin/proj_runserver ~/bin/proj.d/runserver
+        $ mv ~/bin/proj_db_start ~/usr/lib/proj/db_start
+        $ mv ~/bin/proj_db_stop ~/usr/lib/proj/db_stop
+        $ mv ~/bin/proj_deploy ~/usr/lib/proj/deploy
+        $ mv ~/bin/proj_runserver ~/usr/lib/proj/runserver
 
-        $ tree ~/bin
-        ~/bin/
-        ├── proj -> /path/to/lib/subcommander.sh
-        └── proj.d/
-            ├── db_start
-            ├── db_stop
-            ├── deploy
-            ├── help -> /path/to/lib/subcommander/help
-            └── runserver
+        $ tree
+        ~
+        ├── bin/
+        │   └── proj -> /path/to/lib/subcommander.sh
+        └── usr/
+            └── lib/
+                └── proj/
+                    ├── db_start
+                    ├── db_stop
+                    ├── deploy
+                    ├── help -> /path/to/lib/subcommander/help
+                    └── runserver
 
         $ proj
         usage: proj COMMAND [OPTION...] [ARG]...
@@ -113,6 +132,60 @@ Pretty good for two symlinks and a directory, eh?
         No COMMAND specified.
 
         $ proj db_start
+        Starting the database...
+
+### Sub-sub-commands
+
+The steps above are sufficient for most, but we need not stop there. In the
+example above, we have two commands `db_start` and `db_stop` that are
+database-specific: we can further organize them into their own namespace so
+that we can call them with `proj db start` and `proj db stop` respectively.
+
+        $ mkdir -p ~/usr/lib/proj/db
+        $ mv ~/usr/lib/proj/db_start ~/usr/lib/proj/db/start
+        $ mv ~/usr/lib/proj/db_stop ~/usr/lib/proj/db/stop
+
+        $ tree
+        ~
+        ├── bin/
+        │   └── proj -> /path/to/lib/subcommander.sh
+        └── usr/
+            └── lib/
+                └── proj/
+                    ├── db/
+                    │   ├── start
+                    │   └── stop
+                    ├── deploy
+                    ├── help -> /path/to/lib/subcommander/help
+                    └── runserver
+
+Now the main command list is shorter:
+
+        $ proj
+        usage: proj COMMAND [OPTION...] [ARG]...
+
+        Available proj commands are:
+           db                   Runs subcommands
+           deploy               copies working directory up to server
+           help                 Lists the available sub-commands (this text)
+           runserver            runs my server on port 8080
+
+        No COMMAND specified.
+
+Running the new `db` command shows _its_ subcommands:
+
+        $ proj db
+        usage: proj COMMAND [OPTION...] [ARG]...
+
+        Available proj db commands are:
+           start                starts the database
+           stop                 stops the database
+
+        No COMMAND specified.
+
+Which can be called like so:
+
+        $ proj db start
         Starting the database...
 
 ## Improvements for subcommander-based sub-scripts
@@ -145,72 +218,49 @@ The result:
            help                 Lists the available sub-commands (this text)
            runserver            runs my server on port 8080
 
-### Sub-sub-commands
+### Environment variables available to sub-scripts
 
-In the example above, we have two commands `db_start` and `db_stop` that could
-be further cleaned up. In the same way that we created the initial tool `proj`,
-we can also create a `proj db` which itself launches subcommands:
+**Remember: Subcommander sub-scripts are just normal executables.**
 
-        $ ln -s /path/to/lib/subcommander.sh ~/bin/proj.d/db
-        $ mkdir ~/bin/proj.d/db.d
-        $ mv ~/bin/proj.d/db_start ~/bin/proj.d/db.d/start
-        $ mv ~/bin/proj.d/db_stop ~/bin/proj.d/db.d/stop
+You can implement them in any language, compiled or interpreted.
 
-        $ tree ~/bin
-        ~/bin/
-        ├── proj -> /path/to/lib/subcommander.sh
-        └── proj.d/
-            ├── db -> /path/to/lib/subcommander.sh
-            ├── db.d/
-            │   ├── start
-            │   └── stop
-            ├── deploy
-            ├── help -> /path/to/lib/subcommander/help
-            └── runserver
+When executed as a sub-command, the following environment variables will be
+available for their use:
 
-        $ proj
-        usage: proj COMMAND [OPTION...] [ARG]...
+* `SC_MAIN`: The basename of the top-level symlink to subcommander. In the
+  examples above, this would be "`proj`".
 
-        Available proj commands are:
-           db                   Runs subcommands
-           deploy               copies working directory up to server
-           help                 Lists the available sub-commands (this text)
-           runserver            runs my server on port 8080
+* `SC_NAME`: The full command used to execute the script. When
+  `~/usr/lib/proj/db/start` is being executed, this would be "`proj db start`".
 
-        No COMMAND specified.
-
-        $ proj db
-        usage: proj COMMAND [OPTION...] [ARG]...
-
-        Available proj db commands are:
-           start                starts the database
-           stop                 stops the database
-
-        No COMMAND specified.
-
-        $ proj db_start
-        Starting the database...
-
-### Developing and debugging with `info`
+* `SC_CONTEXT`: (Optional) The path to the context, if found. The context is
+  the closest ancestor directory containing a `.proj.context` file.
 
 To see what variables are set by subcommander when it executes your tool, try
 the `info` subcommand included with subcommander.
 
-        $ ln -s /path/to/lib/subcommander/info ~/bin/proj.d/
+        $ ln -s /path/to/lib/subcommander/info ~/usr/lib/proj/
         $ proj info
 
-### "I don't like `proj.d`"
+### "I don't like `~/usr/lib/proj`"
 
 A subcommander-based tool named `proj` will default to looking in the directory
-`proj.d` in the same directory as `proj` for its subcommands. This may be
-overridden by setting `PROJ_EXEC_PATH` in the environment.
+`~/usr/lib/proj` for its subcommands. This may be overridden by setting
+`PROJ_EXEC_PATH` in the environment.
 
-You don't need to edit your startup scripts to set this into the environment.
-Just add it to `~/.projrc`. See "Hook Scripts and Environment Variables" below
-for details.
+You can set this into the environment in the traditional way by adding a line
+to your `~/.bashrc` file like:
+
+    export PROJ_EXEC_PATH=/path/to/proj_subcommands
+
+After editing, you will need to restart your shell for it to take effect.
+
+Alternatively, you don't need to edit your startup scripts to set this into the
+environment. You can employ the `proj` configuration script, `~/.projrc`. See
+"Hook Scripts and Environment Variables" below for details.
 
 These names are dependent on what you name your tool. If instead of `proj` you
-called your tool `foo`, you would want to put subcommands in `foo.d`, use
+called your tool `foo`, you would want to put subcommands in `/usr/lib/foo/`, use
 `FOO_EXEC_PATH` to override that location, and put `foo`-specific configuration
 in `~/.foorc`.
 
@@ -219,7 +269,7 @@ in `~/.foorc`.
 Subcommander-based tools know what directories they "own", and the `init`
 script is included to make the setup of a context easy.
 
-        $ ln -s /path/to/lib/subcommander/init ~/bin/proj.d/
+        $ ln -s /path/to/lib/subcommander/init ~/usr/lib/proj/
 
 Now, let's say you're working on a version of your project, with a directory
 structure like this:
@@ -244,15 +294,16 @@ invoke it as before, but with the `SC_CONTEXT` environment variable set to
 ### Hook scripts and environment variables
 
 If you would like to call hook scripts or set variables into the environment
-specific to your project, just add those commands to the context file
-`.proj.context`. If you would like to hook into each invocation of your
-script regardless of context, you may also create an executable script named
-`~/.projrc`.
+every time you use `proj`, create an executable script named `~/.projrc`.
 
-The context file is, by default, acutally an _executable shell script_. You can
-replace it with any executable, written in any language, as long as you follow
-its convention of executing (with `exec()`) its argument list. Here's a context
-file that sets one environment variable:
+If you want to call hook scripts or set variables specific to your project, add
+those commands to the context file `.proj.context` in the root of your proj
+context.
+
+The context file and rc file is by default an _executable shell script_. You
+can replace it with any executable, written in any language, as long as you
+follow its convention of executing (with `exec()`) its argument list. Here's a
+context file that sets one environment variable:
 
     #!/bin/sh
     export FOO_PATH="/tmp/foo"
@@ -265,8 +316,9 @@ Here it is again, in Python:
     os.environ['FOO_PATH'] = '/tmp/foo'
     os.execv(*sys.argv[1:])
 
-It doesn't even need to be a script. Here's a C program you can compile and use
-as a context file. (Though I can't imagine why anybody would do this.)
+It doesn't even need to be a script. Here it is again, as a C program you can
+compile and use as a context file. (Though I can't imagine why anybody would do
+this.)
 
     #include <stdio.h>
     int main(int argc, char *argv[])
@@ -275,10 +327,14 @@ as a context file. (Though I can't imagine why anybody would do this.)
         return execvp(argv[1], &(argv[1]));
     }
 
-Now, whenever a script that lives in ~/bin/proj.d is run, # LEFT OFF HERE
+Now, whenever a subcommand is executed by `proj`, the environment variable
+`FOO_PATH` will be set to `/tmp/foo`.
+
+**Remember: Subcommander configuration files are just normal executables that
+exec() their arguments.**
 
 These names are dependent on what you name your tool. If instead of `proj` you
-called your tool `foo`, your context file would be named `.foo.context`, and
+called your tool `foo`, your context files would be named `.foo.context`, and
 your rc file would be named `~/.foorc`.
 
 ### Integration with virtualenv
@@ -307,8 +363,12 @@ If you have already done `proj init` in the root of your virtualenv environment:
 ## Other tools like this one
 
 There are many tools that accomplish something similar. This is my defense
-against accusations of [NIH Syndrome][]. Here is a comparison of similar tools I
-have found, and the reason why I created this instead of using them.
+against accusations of [NIH Syndrome][]. Here is a comparison of similar tools
+I have found, and the reason why I created this instead of using them.
+
+* [https://github.com/37signals/sub](37signals/sub): This tool adopts many of the same principles as Subcommander, such as language-agnosticism. I discovered it months after I had written Subcommander. You might consider it if you prefer its architecture.
+
+Others:
 
 * [Wayne E. Seguin's BDSM](https://bdsm.beginrescueend.com/): Too complex, no context discovery(?), nsfw docs make my eyes bleed.
 * [anandology/subcommand](https://github.com/anandology/subcommand): Requires commands to be implemented in Python.
@@ -318,6 +378,13 @@ have found, and the reason why I created this instead of using them.
 * [ander/subcommand](https://github.com/ander/subcommand): Requires commands to be implemented in Ruby.
 * [tsantos/subcommander](https://github.com/tsantos/subcommander): Requires commands to be implemented in Ruby.
 * [msassak/kerplutz](https://github.com/msassak/kerplutz): I can't really figure it out but I think it's Ruby-only.
+* [fabric/fabric](https://github.com/fabric/fabric): Subcommands are implemented in Python. Strange command-line interface to support running commands on multiple remote hosts at once. Treats local host as remote host.
+* [anandology/subcommand](https://github.com/anandology/subcommand): Requires subcommands to be implmented in Python.
+
+It may be simple to create a small launcher for scripts in other languages, but
+that means every time you add, move, or rename a script you'd have to touch
+some main file. Subcommander is entirely configured by the existence of a
+script at a particular place in the filesystem.
 
 [NIH Syndrome]: http://en.wikipedia.org/wiki/Not_Invented_Here
 
@@ -330,6 +397,8 @@ have found, and the reason why I created this instead of using them.
   using `chroot`. I would love some way to automatically verify whether or not
   all code paths in all of these scripts work perfectly on various unices--
   Ubuntu, Debian, OS X, Arch, Red Hat.
+- Employ another way to get descriptive text; we won't be able to parse
+  binaries for 'Description:' lines.
 
 ## License
 
