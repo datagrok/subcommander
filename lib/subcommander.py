@@ -10,15 +10,17 @@ same way.
 import os
 import warnings
 import subprocess
+import textwrap
 
 
 def format_msg(s):
     """Helper that unindents and unwraps multiline docstrings."""
-    return ' '.join(l.strip() for l in s.strip().splitlines())
+    return textwrap.fill(textwrap.dedent(s).strip())
+
 
 def format_script(s):
     """Helper that unindents multiline docstrings."""
-    return '\n'.join(l.strip() for l in s.strip().splitlines()) + '\n'
+    return textwrap.dedent(s).strip() + '\n'
 
 
 class SubcommanderUserError(Exception):
@@ -26,40 +28,41 @@ class SubcommanderUserError(Exception):
     to the user.
 
     """
-    pass
+    def __str__(self):
+        if self.filename:
+            return format_msg("%s: %s" % (self.strerror, self.filename))
+        else:
+            return format_msg(self.strerror)
 
 
-class CalledDirectlyError(EnvironmentError, SubcommanderUserError):
+class CalledDirectlyError(SubcommanderUserError, EnvironmentError):
     def __init__(self):
         super(CalledDirectlyError, self).__init__(
             1,
-            format_msg("""
-                Subcommander is an abstraction that is not meant to be run
-                under its own name. Instead, create a symlink to it, with a
-                different name. And read the instructions."""))
+            """Subcommander is an abstraction that is not meant to be run under
+            its own name. Instead, create a symlink to it, with a different
+            name. And read the instructions.""")
 
 
-class SubcommandDirectoryNotConfiguredError(EnvironmentError, SubcommanderUserError):
+class SubcommandDirectoryNotConfiguredError(SubcommanderUserError, EnvironmentError):
     def __init__(self, exec_path_envname, rcfile):
         super(SubcommandDirectoryNotConfiguredError, self).__init__(
             6,
-            format_msg("""
-                Could not find %s set in the environment. This should specify
-                the path to subcommands. Recommend adding it to %s.""" % (
-                    exec_path_envname, rcfile)))
+            """Could not find %s set in the environment. This should specify
+            the path to subcommands. Recommend adding it to %s.""" % (
+                exec_path_envname, rcfile))
 
 
-class SubcommandDirectoryMissingError(EnvironmentError, SubcommanderUserError):
+class SubcommandDirectoryMissingError(SubcommanderUserError, EnvironmentError):
     def __init__(self, exec_path):
         super(SubcommandDirectoryMissingError, self).__init__(
             4,
-            format_msg("""
-                Subcommands directory does not exist. Place executable files
-                there to enable them as sub-commands"""),
+            """Subcommands directory does not exist. Place executable files
+            here to enable them as sub-commands""",
             exec_path)
 
 
-class SpecifiedContextNotFoundError(EnvironmentError, SubcommanderUserError):
+class SpecifiedContextNotFoundError(SubcommanderUserError, EnvironmentError):
     def __init__(self, ctx_envname, environment_contextfile):
         super(SpecifiedContextNotFoundError, self).__init__(
             3,
@@ -67,14 +70,14 @@ class SpecifiedContextNotFoundError(EnvironmentError, SubcommanderUserError):
             environment_contextfile)
 
 
-class NoCommandSpecifiedError(EnvironmentError, SubcommanderUserError):
+class NoCommandSpecifiedError(SubcommanderUserError, EnvironmentError):
     def __init__(self):
         super(NoCommandSpecifiedError, self).__init__(
             2,
             "No COMMAND specified.")
 
 
-class ConfigFileNotExecutableError(EnvironmentError, SubcommanderUserError):
+class ConfigFileNotExecutableError(SubcommanderUserError, EnvironmentError):
     def __init__(self, configfile):
         super(ConfigFileNotExecutableError, self).__init__(
             5,
@@ -106,8 +109,8 @@ def create_rc_file(rcfile, exec_path_envname):
             # you take care to exec() the command passed in as arguments, as is
             # done below.
 
-            # This line sets %(execpathvar)s to ~/usr/lib/%(SC_MAIN)s unless it
-            # is overridden in the environment.
+            # This line sets %(exec_path_envname)s to ~/usr/lib/%(SC_MAIN)s
+            # unless it is overridden in the environment.
             export %(exec_path_envname)s="${%(exec_path_envname)s:-~/usr/lib/%(SC_MAIN)s}"
 
             # If you have hooks to execute or customizations to make to the
@@ -139,8 +142,10 @@ def main(argv0, *args):
     if args and args[0] == '--subcommander-skip-rcfile':
         args = args[1:]
     else:
+        # create boilerplate rcfile if nonexistent
         if not os.path.exists(rcfile):
-            create_rc_file(rcfile)
+            create_rc_file(rcfile, exec_path_envname)
+        # ensure rcfile is executable
         if not os.access(rcfile, os.X_OK):
             raise ConfigFileNotExecutableError(rcfile)
         # I say "return" but technically execv aborts here.
@@ -166,8 +171,9 @@ def main(argv0, *args):
             print >> sys.stderr, "usage: %(SC_NAME)s COMMAND [ARGS...]\n" % os.environ
         raise NoCommandSpecifiedError()
 
-    subcommandbase = args.pop(0)
+    subcommandbase = args[0]
     subcommand = os.path.join(exec_path, subcommandbase)
+    args = args[1:]
 
     if not os.access(subcommand, os.R_OK|os.X_OK):
         return "Unknown %s command: %s" % (os.environ['SC_NAME'], subcommandbase)
@@ -175,6 +181,8 @@ def main(argv0, *args):
     context_filename = ".%(SC_MAIN)s.context" % os.environ
 
     discovered_contextfile = discover_context(context_filename)
+
+    environment_contextfile = None
 
     if environment_context:
         environment_contextfile = os.path.join([
@@ -195,14 +203,16 @@ def main(argv0, *args):
         contextfile = environment_contextfile
     elif discovered_contextfile:
         contextfile = discovered_contextfile
+    else:
+        contextfile = None
 
-    if os.access(subcommand, os.R_OK|os.X_OK):
+    if contextfile and os.access(subcommand, os.R_OK|os.X_OK):
         os.environ['SC_CONTEXT'] = os.path.dirname(contextfile)
-    elif os.access(subcommand, os.R_OK):
+    elif contextfile and os.access(subcommand, os.R_OK):
         raise EnvironmentError(4, "Context file must be executable", contextfile)
     else:
-        del os.environ['SC_CONTEXT']
-        contextfile = None
+        if 'SC_CONTEXT' in os.environ:
+            del os.environ['SC_CONTEXT']
 
     if contextfile:
         os.execv(contextfile, (contextfile, subcommand) + args)
@@ -215,5 +225,7 @@ if __name__ == '__main__':
     try:
         raise SystemExit(main(*sys.argv))
     except SubcommanderUserError, e:
+        # If a SubcommanderUserError occurs, show a normal-looking error
+        # message, not a Python traceback.
         print >> sys.stderr, e
         raise SystemExit(e.errno)
