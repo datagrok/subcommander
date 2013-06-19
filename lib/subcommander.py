@@ -88,6 +88,13 @@ class ConfigFileNotExecutableError(SubcommanderUserError, EnvironmentError):
             configfile)
 
 
+class UnknownSubcommandError(SubcommanderUserError, EnvironmentError):
+    def __init__(self, command):
+        super(UnknownSubcommandError, self).__init__(
+            7,
+            "Unknown %s command" % os.environ['SC_MAIN'],
+            command)
+
 def discover_context(context_filename):
     cwd = os.path.realpath(os.getcwd()).split(os.path.sep)
     for n in range(len(cwd), 0, -1):
@@ -129,31 +136,30 @@ def create_rc_file(rcfile, exec_path_envname):
         os.fchmod(fp.fileno(), 0755)
 
 
-def main(argv0, *args):
-    argv0_basename = os.path.basename(argv0)
-    os.environ['SC_MAIN'] = argv0_basename
-    os.environ['SC_NAME'] = argv0_basename
-    rcfile = "%(HOME)s/.%(SC_MAIN)src" % os.environ
-    ctx_envname = ('%s_CONTEXT' % argv0_basename).upper().replace(' ', '_')
-    exec_path_envname = ('%s_EXEC_PATH' % argv0_basename).upper().replace(' ', '_')
-
+def verify_not_called_directly():
     # Users shouldn't invoke 'subcommander' directly.
     if os.environ['SC_MAIN'].startswith('subcommander'):
+        # FIXME: this should instead walk a user through setting up a
+        # subcommander-based tool, creating symlinks etc.
         raise CalledDirectlyError
 
+
+def bounce_through_rcfile(rcfile, exec_path_envname, argv0, args):
     # re-exec ourselves after bouncing through rcfile.
     if args and args[0] == '--subcommander-skip-rcfile':
-        args = args[1:]
-    else:
-        # create boilerplate rcfile if nonexistent
-        if not os.path.exists(rcfile):
-            create_rc_file(rcfile, exec_path_envname)
-        # ensure rcfile is executable
-        if not os.access(rcfile, os.X_OK):
-            raise ConfigFileNotExecutableError(rcfile)
-        # I say "return" but technically execv aborts here.
-        return os.execv(rcfile, (rcfile, argv0, '--subcommander-skip-rcfile') + args)
+        return args[1:]
 
+    # create boilerplate rcfile if nonexistent
+    if not os.path.exists(rcfile):
+        create_rc_file(rcfile, exec_path_envname)
+    # ensure rcfile is executable
+    if not os.access(rcfile, os.X_OK):
+        raise ConfigFileNotExecutableError(rcfile)
+    # I say "raise SystemExit" but technically execv aborts here.
+    raise SystemExit(os.execv(rcfile, (rcfile, argv0, '--subcommander-skip-rcfile') + args))
+
+
+def get_exec_path(exec_path_envname, rcfile):
     try:
         exec_path = os.environ[exec_path_envname]
     except KeyError:
@@ -164,27 +170,28 @@ def main(argv0, *args):
     if not os.path.isdir(exec_path):
         raise SubcommandDirectoryMissingError(exec_path)
 
+    return exec_path
+
+
+def show_help(exec_path):
+    help_executable = os.path.join(exec_path, 'help')
+    if os.access(help_executable, os.R_OK|os.X_OK):
+        subprocess.call([help_executable])
+    else:
+        logger.error("usage: %(SC_NAME)s COMMAND [ARGS...]\n" % os.environ)
+
+
+def launch(subcommand, args, contextfile=None):
+    if contextfile:
+        os.execv(contextfile, (contextfile, subcommand) + args)
+    else:
+        os.execv(subcommand, (subcommand,) + args)
+
+
+def get_contextfile(ctx_envname):
     environment_context = os.environ.get(ctx_envname)
-
-    if not args:
-        help_executable = '%s/help' % exec_path
-        if os.access(help_executable, os.R_OK|os.X_OK):
-            subprocess.call([help_executable])
-        else:
-            logger.error("usage: %(SC_NAME)s COMMAND [ARGS...]\n" % os.environ)
-        raise NoCommandSpecifiedError()
-
-    subcommandbase = args[0]
-    subcommand = os.path.join(exec_path, subcommandbase)
-    args = args[1:]
-
-    if not os.access(subcommand, os.R_OK|os.X_OK):
-        return "Unknown %s command: %s" % (os.environ['SC_NAME'], subcommandbase)
-
     context_filename = ".%(SC_MAIN)s.context" % os.environ
-
     discovered_contextfile = discover_context(context_filename)
-
     environment_contextfile = None
 
     if environment_context:
@@ -203,11 +210,47 @@ def main(argv0, *args):
                 ctx_envname, environment_context, discovered_contextfile)))
 
     if environment_contextfile:
-        contextfile = environment_contextfile
-    elif discovered_contextfile:
-        contextfile = discovered_contextfile
-    else:
-        contextfile = None
+        return environment_contextfile
+    if discovered_contextfile:
+        return discovered_contextfile
+    return None
+
+
+def get_subcommand(command, exec_path):
+    subcommand = exec_path
+    args = []
+    for n, arg in enumerate(command):
+        commands, args = command[:n+1], command[n+1:]
+        subcommand = os.path.join(exec_path, *commands)
+
+        if not os.access(subcommand, os.R_OK|os.X_OK):
+            raise UnknownSubcommandError(' '.join(commands))
+
+        if os.path.isfile(subcommand):
+            break
+
+    return subcommand, args
+
+
+def main(argv0, *args):
+    argv0_basename = os.path.basename(argv0)
+    os.environ['SC_MAIN'] = argv0_basename
+    os.environ['SC_NAME'] = argv0_basename
+    rcfile = "%(HOME)s/.%(SC_MAIN)src" % os.environ
+    ctx_envname = ('%s_CONTEXT' % argv0_basename).upper().replace(' ', '_')
+    exec_path_envname = ('%s_EXEC_PATH' % argv0_basename).upper().replace(' ', '_')
+
+    verify_not_called_directly()
+    args = bounce_through_rcfile(rcfile, exec_path_envname, argv0, args)
+    exec_path = get_exec_path(exec_path_envname, rcfile)
+
+    subcommand, args = get_subcommand(args, exec_path)
+
+    if os.path.isdir(subcommand):
+        show_help(subcommand)
+        raise NoCommandSpecifiedError()
+
+    contextfile = get_contextfile(ctx_envname)
 
     if contextfile and os.access(subcommand, os.R_OK|os.X_OK):
         os.environ['SC_CONTEXT'] = os.path.dirname(contextfile)
@@ -217,11 +260,7 @@ def main(argv0, *args):
         if 'SC_CONTEXT' in os.environ:
             del os.environ['SC_CONTEXT']
 
-    if contextfile:
-        os.execv(contextfile, (contextfile, subcommand) + args)
-    else:
-        os.execv(subcommand, (subcommand,) + args)
-
+    launch(subcommand, args, contextfile=contextfile)
 
 if __name__ == '__main__':
     import sys

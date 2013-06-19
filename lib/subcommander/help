@@ -18,33 +18,39 @@ import sys
 dirname = os.path.dirname(sys.argv[0])
 desc_re = re.compile('.{0,4}desc(?:ription)?\s*[:=]\s*(.*)', re.I)
 
+
 def get_description(filename):
     '''Look through the first few lines of a file for a Description: line,
     and return the description.
 
+    For directories, look for dir.description or dir/_description
+
     '''
-    with open(filename) as fp:
-        for line in islice(fp, 10):
-            try:
-                return desc_re.match(line).group(1)
-            except AttributeError:
-                pass
+    if os.path.isdir(filename):
+
+        for descfile in [
+                '%s.description' % filename,
+                os.path.join(filename, '_description')]:
+            if os.path.exists(descfile):
+                filename = descfile
+                break
+        else:
+            return 'Runs subcommands'
+
+        with open(filename) as fp:
+            return fp.next().strip()
+
+    else:
+
+        with open(filename) as fp:
+            for line in islice(fp, 10):
+                try:
+                    return desc_re.match(line).group(1)
+                except AttributeError:
+                    pass
+
     return ''
 
-def exec_sub_help(argv):
-    '''If 'help' is called with an argument, delegate to calling the subcommand
-    with '--help'.
-
-    Calling:
-        $SC_NAME help command
-    is equivalent to:
-        $SC_NAME command --help
-
-    '''
-    command = argv[1]
-    args = argv[2:]
-    args.insert(0, '--help')
-    os.execvp(os.path.join(dirname, command), args)
 
 def list_subcommands():
     '''Walk through our sibling executables, displaying their name and their
@@ -53,8 +59,8 @@ def list_subcommands():
     '''
     for f in sorted(glob(os.path.join(dirname, '*'))):
         basename = os.path.basename(f)
-        if os.path.isdir(f):
-            continue
+        #if os.path.isdir(f):
+        #    continue
         if not os.access(f, os.R_OK|os.X_OK):
             continue
         if basename.startswith('_'):
@@ -64,10 +70,12 @@ def list_subcommands():
         description = description.replace('$1', basename)
         yield basename, description
 
+
 def porcelain():
     '''Give the output in a stable, easy-to-parse format for scripts.'''
     for basename, description in list_subcommands():
         print '%s:%s' % (basename, description)
+
 
 def usage():
     print "usage: {SC_NAME} COMMAND [ARGS...]".format(**os.environ)
@@ -76,14 +84,13 @@ def usage():
     for basename, description in list_subcommands():
         print '    %-20s %s' % (basename, description)
 
+
 def main(argv):
-    if len(argv) > 1:
-        if argv[1] == '--porcelain':
-            porcelain()
-        else:
-            exec_sub_help(argv)
+    if len(argv) == 2 and argv[1] == '--porcelain':
+        porcelain()
     else:
         usage()
+
 
 if __name__=='__main__':
     sys.exit(main(sys.argv))
