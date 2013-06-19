@@ -11,6 +11,9 @@ import os
 import warnings
 import subprocess
 import textwrap
+import logging
+
+logger = None
 
 
 def format_msg(s):
@@ -98,7 +101,7 @@ def create_rc_file(rcfile, exec_path_envname):
     comments.
 
     """
-    print >> sys.stderr, "Creating rcfile %s." % rcfile
+    logger.warn("Creating rcfile %s." % rcfile)
     with open(rcfile, 'w') as fp:
         fp.write(format_script("""
             #!/bin/sh
@@ -168,7 +171,7 @@ def main(argv0, *args):
         if os.access(help_executable, os.R_OK|os.X_OK):
             subprocess.call([help_executable])
         else:
-            print >> sys.stderr, "usage: %(SC_NAME)s COMMAND [ARGS...]\n" % os.environ
+            logger.error("usage: %(SC_NAME)s COMMAND [ARGS...]\n" % os.environ)
         raise NoCommandSpecifiedError()
 
     subcommandbase = args[0]
@@ -222,10 +225,12 @@ def main(argv0, *args):
 
 if __name__ == '__main__':
     import sys
+    logger = logging.getLogger(os.path.basename(sys.argv[0]))
+    logger.addHandler(logging.StreamHandler())
     try:
         raise SystemExit(main(*sys.argv))
     except SubcommanderUserError, e:
         # If a SubcommanderUserError occurs, show a normal-looking error
         # message, not a Python traceback.
-        print >> sys.stderr, e
+        logger.error(e)
         raise SystemExit(e.errno)
