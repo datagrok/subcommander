@@ -65,14 +65,6 @@ class SubcommandDirectoryMissingError(SubcommanderUserError, EnvironmentError):
             exec_path)
 
 
-class SpecifiedContextNotFoundError(SubcommanderUserError, EnvironmentError):
-    def __init__(self, ctx_envname, environment_contextfile):
-        super(SpecifiedContextNotFoundError, self).__init__(
-            3,
-            "The context specified by %s does not exist" % ctx_envname,
-            environment_contextfile)
-
-
 class NoCommandSpecifiedError(SubcommanderUserError, EnvironmentError):
     def __init__(self):
         super(NoCommandSpecifiedError, self).__init__(
@@ -94,13 +86,6 @@ class UnknownSubcommandError(SubcommanderUserError, EnvironmentError):
             7,
             "Unknown %s command" % os.environ['SC_MAIN'],
             command)
-
-def discover_context(context_filename):
-    cwd = os.path.realpath(os.getcwd()).split(os.path.sep)
-    for n in range(len(cwd), 0, -1):
-        context_file = os.path.sep.join(cwd[0:n] + [context_filename])
-        if os.path.exists(context_file):
-            return context_file
 
 
 def create_rc_file(rcfile, exec_path_envname):
@@ -144,21 +129,6 @@ def verify_not_called_directly():
         raise CalledDirectlyError
 
 
-def bounce_through_rcfile(rcfile, exec_path_envname, argv0, args):
-    # re-exec ourselves after bouncing through rcfile.
-    if args and args[0] == '--subcommander-skip-rcfile':
-        return args[1:]
-
-    # create boilerplate rcfile if nonexistent
-    if not os.path.exists(rcfile):
-        create_rc_file(rcfile, exec_path_envname)
-    # ensure rcfile is executable
-    if not os.access(rcfile, os.X_OK):
-        raise ConfigFileNotExecutableError(rcfile)
-    # I say "raise SystemExit" but technically execv aborts here.
-    raise SystemExit(os.execv(rcfile, (rcfile, argv0, '--subcommander-skip-rcfile') + args))
-
-
 def get_exec_path(exec_path_envname, rcfile):
     try:
         exec_path = os.environ[exec_path_envname]
@@ -181,42 +151,8 @@ def show_help(exec_path):
         logger.error("usage: %(SC_NAME)s COMMAND [ARGS...]\n" % os.environ)
 
 
-def launch(subcommand, args, contextfile=None):
-    if contextfile:
-        os.execv(contextfile, (contextfile, subcommand) + args)
-    else:
-        os.execv(subcommand, (subcommand,) + args)
-
-
-def get_contextfile(ctx_envname):
-    environment_context = os.environ.get(ctx_envname)
-    context_filename = ".%(SC_MAIN)s.context" % os.environ
-    discovered_contextfile = discover_context(context_filename)
-    environment_contextfile = None
-
-    if environment_context:
-        environment_contextfile = os.path.join([
-            environment_context, context_filename])
-        if not os.path.exists(environment_contextfile):
-            raise SpecifiedContextNotFoundError(
-                    ctx_envname, environment_contextfile)
-
-    if (environment_context and discovered_contextfile
-            and not os.path.samefile(
-                environment_context, discovered_contextfile)):
-        warnings.warn(format_msg("""
-            Context specified by %s=%s differs from and overrides context
-            discovered at %s. Be sure that this is what you intend.""" % (
-                ctx_envname, environment_context, discovered_contextfile)))
-
-    if environment_contextfile:
-        return environment_contextfile
-    if discovered_contextfile:
-        return discovered_contextfile
-    return None
-
-
 def get_subcommand(command, exec_path):
+    """Find the first executable file that matches the set of commands"""
     subcommand = exec_path
     args = []
     for n, arg in enumerate(command):
@@ -232,16 +168,38 @@ def get_subcommand(command, exec_path):
     return subcommand, args
 
 
-def main(argv0, *args):
+def subcommander(argv0, *args):
+    """
+
+    The following arguments are special to subcommander-based tools, and will
+    be plucked out of the command line for processing:
+
+    -h, --help
+    -V, --version
+    -v, --verbose
+
+    """
     argv0_basename = os.path.basename(argv0)
-    os.environ['SC_MAIN'] = argv0_basename
-    os.environ['SC_NAME'] = argv0_basename
-    rcfile = "%(HOME)s/.%(SC_MAIN)src" % os.environ
-    ctx_envname = ('%s_CONTEXT' % argv0_basename).upper().replace(' ', '_')
+    os.environ['SUBCOMMANDER_ARGV0'] = argv0_basename
+    rcfile = "%(HOME)s/.%(SUBCOMMANDER_ARGV0)src" % os.environ
     exec_path_envname = ('%s_EXEC_PATH' % argv0_basename).upper().replace(' ', '_')
 
     verify_not_called_directly()
-    args = bounce_through_rcfile(rcfile, exec_path_envname, argv0, args)
+
+    # create boilerplate rcfile if nonexistent
+    if not os.path.exists(rcfile):
+        create_rc_file(rcfile, exec_path_envname)
+
+    # ensure rcfile is executable
+    if not os.access(rcfile, os.X_OK):
+        raise ConfigFileNotExecutableError(rcfile)
+
+    # if we haven't set the "seen the rc file" flag, set it and bounce through
+    # the rcfile
+    if not os.environ.get('SC_RC_APPLIED'):
+        os.environ['SC_RC_APPLIED'] = 1
+        return os.execv(rcfile, (rcfile, argv0) + args)
+
     exec_path = get_exec_path(exec_path_envname, rcfile)
 
     subcommand, args = get_subcommand(args, exec_path)
@@ -250,26 +208,22 @@ def main(argv0, *args):
         show_help(subcommand)
         raise NoCommandSpecifiedError()
 
-    contextfile = get_contextfile(ctx_envname)
+    # execv never returns; I 'return' to indicate execution won't continue
+    return os.execv(subcommand, (subcommand,) + args)
 
-    if contextfile and os.access(subcommand, os.R_OK|os.X_OK):
-        os.environ['SC_CONTEXT'] = os.path.dirname(contextfile)
-    elif contextfile and os.access(subcommand, os.R_OK):
-        raise EnvironmentError(4, "Context file must be executable", contextfile)
-    else:
-        if 'SC_CONTEXT' in os.environ:
-            del os.environ['SC_CONTEXT']
 
-    launch(subcommand, args, contextfile=contextfile)
-
-if __name__ == '__main__':
+def main():
     import sys
     logger = logging.getLogger(os.path.basename(sys.argv[0]))
     logger.addHandler(logging.StreamHandler())
     try:
-        raise SystemExit(main(*sys.argv))
+        return subcommander(*sys.argv)
     except SubcommanderUserError, e:
         # If a SubcommanderUserError occurs, show a normal-looking error
         # message, not a Python traceback.
         logger.error(e)
-        raise SystemExit(e.errno)
+        return e.errno
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

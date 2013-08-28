@@ -369,7 +369,7 @@ I have found, and the reason why I created this instead of using them.
 * [https://github.com/37signals/sub](37signals/sub): This tool adopts many of the same principles as Subcommander, such as language-agnosticism. I discovered it months after I had written Subcommander. You might consider it if you prefer its architecture.
 
 Others:
-
+* https://github.com/jwmayfield/fn a "personalization of 37signals/sub"
 * [Wayne E. Seguin's BDSM](https://bdsm.beginrescueend.com/): Too complex, no context discovery(?), nsfw docs make my eyes bleed.
 * [anandology/subcommand](https://github.com/anandology/subcommand): Requires commands to be implemented in Python.
 * [jds/clik](https://github.com/jds/clik): Requires commands to be implemented in Python.
@@ -380,6 +380,15 @@ Others:
 * [msassak/kerplutz](https://github.com/msassak/kerplutz): I can't really figure it out but I think it's Ruby-only.
 * [fabric/fabric](https://github.com/fabric/fabric): Subcommands are implemented in Python. Strange command-line interface to support running commands on multiple remote hosts at once. Treats local host as remote host.
 * [anandology/subcommand](https://github.com/anandology/subcommand): Requires subcommands to be implmented in Python.
+* [GaretJax/subcommands](https://github.com/GaretJax/subcommands): ...
+https://github.com/will0/instacmd
+https://github.com/repejota/subcmd
+https://github.com/m1m0r1/argtools.py
+https://github.com/dbrock/exec-longest-prefix
+https://github.com/nicksloan/subcommander
+https://github.com/bjeanes/optparse-subcommand Ruby.
+https://github.com/ander/subcommand Ruby.
+https://github.com/domnikl/subcommand Go.
 
 It may be simple to create a small launcher for scripts in other languages, but
 that means every time you add, move, or rename a script you'd have to touch
