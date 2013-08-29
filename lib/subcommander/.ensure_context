@@ -3,6 +3,6 @@
 set -e
 
 [ "$SC_CONTEXT" ] || {
-        echo "Error: this command needs to be run from within a $SC_MAIN context."
+        echo "Error: this command needs to be run from within a $SC_ARGV0 context."
         exit 1
 }

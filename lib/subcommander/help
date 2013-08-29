@@ -66,7 +66,7 @@ def list_subcommands():
         if basename.startswith('_'):
             continue
         description = get_description(f)
-        description = description.replace('$0', os.environ['SC_NAME'])
+        description = description.replace('$0', os.environ['SC_COMMAND'])
         description = description.replace('$1', basename)
         yield basename, description
 
@@ -78,9 +78,9 @@ def porcelain():
 
 
 def usage():
-    print "usage: {SC_NAME} COMMAND [ARGS...]".format(**os.environ)
+    print "usage: {SC_COMMAND} COMMAND [ARGS...]".format(**os.environ)
     print
-    print "Available {SC_NAME} commands are:".format(**os.environ)
+    print "Available {SC_COMMAND} commands are:".format(**os.environ)
     for basename, description in list_subcommands():
         print '    %-20s %s' % (basename, description)
 

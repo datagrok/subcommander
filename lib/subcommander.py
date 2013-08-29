@@ -8,12 +8,13 @@ same way.
 '''
 
 import os
+import sys
 import warnings
 import subprocess
 import textwrap
 import logging
 
-logger = None
+logger = logging.getLogger(os.path.basename(sys.argv[0]))
 
 
 def format_msg(s):
@@ -84,7 +85,7 @@ class UnknownSubcommandError(SubcommanderUserError, EnvironmentError):
     def __init__(self, command):
         super(UnknownSubcommandError, self).__init__(
             7,
-            "Unknown %s command" % os.environ['SC_MAIN'],
+            "Unknown %s command" % os.environ['SC_ARGV0'],
             command)
 
 
@@ -98,35 +99,27 @@ def create_rc_file(rcfile, exec_path_envname):
         fp.write(format_script("""
             #!/bin/sh
 
-            # This file is executed by '%(SC_MAIN)s' every time you run a
-            # '%(SC_MAIN)s' subcommand. You can edit this script, or replace it
+            # This file is executed by '%(SC_ARGV0)s' every time you run a
+            # '%(SC_ARGV0)s' subcommand. You can edit this script, or replace it
             # with your own executable script or compiled program, so long as
             # you take care to exec() the command passed in as arguments, as is
             # done below.
 
-            # This line sets %(exec_path_envname)s to ~/usr/lib/%(SC_MAIN)s
+            # This line sets %(exec_path_envname)s to ~/usr/lib/%(SC_ARGV0)s
             # unless it is overridden in the environment.
-            export %(exec_path_envname)s="${%(exec_path_envname)s:-~/usr/lib/%(SC_MAIN)s}"
+            export %(exec_path_envname)s="${%(exec_path_envname)s:-~/usr/lib/%(SC_ARGV0)s}"
 
             # If you have hooks to execute or customizations to make to the
             # environment, you may do so here.
 
-            # The following line must be present for '%(SC_MAIN)s' to function.
+            # The following line must be present for '%(SC_ARGV0)s' to function.
             # It ends the script; any lines after it will never be reached.
             exec "$@"
             """ % {
                 'exec_path_envname': exec_path_envname,
-                'SC_MAIN': os.environ['SC_MAIN'],
+                'SC_ARGV0': os.environ['SC_ARGV0'],
             }))
         os.fchmod(fp.fileno(), 0755)
-
-
-def verify_not_called_directly():
-    # Users shouldn't invoke 'subcommander' directly.
-    if os.environ['SC_MAIN'].startswith('subcommander'):
-        # FIXME: this should instead walk a user through setting up a
-        # subcommander-based tool, creating symlinks etc.
-        raise CalledDirectlyError
 
 
 def get_exec_path(exec_path_envname, rcfile):
@@ -148,10 +141,10 @@ def show_help(exec_path):
     if os.access(help_executable, os.R_OK|os.X_OK):
         subprocess.call([help_executable])
     else:
-        logger.error("usage: %(SC_NAME)s COMMAND [ARGS...]\n" % os.environ)
+        logger.error("usage: %(SC_COMMAND)s COMMAND [ARGS...]\n" % os.environ)
 
 
-def get_subcommand(command, exec_path):
+def get_subcommand(argv0, command, exec_path):
     """Find the first executable file that matches the set of commands"""
     subcommand = exec_path
     args = []
@@ -165,6 +158,7 @@ def get_subcommand(command, exec_path):
         if os.path.isfile(subcommand):
             break
 
+    os.environ['SC_COMMAND'] = ' '.join((argv0,) + commands)
     return subcommand, args
 
 
@@ -180,11 +174,15 @@ def subcommander(argv0, *args):
 
     """
     argv0_basename = os.path.basename(argv0)
-    os.environ['SUBCOMMANDER_ARGV0'] = argv0_basename
-    rcfile = "%(HOME)s/.%(SUBCOMMANDER_ARGV0)src" % os.environ
+    os.environ['SC_ARGV0'] = argv0_basename
+    rcfile = "%(HOME)s/.%(SC_ARGV0)src" % os.environ
     exec_path_envname = ('%s_EXEC_PATH' % argv0_basename).upper().replace(' ', '_')
 
-    verify_not_called_directly()
+    # Users shouldn't invoke 'subcommander' directly.
+    if os.environ['SC_ARGV0'].startswith('subcommander'):
+        # FIXME: this should instead walk a user through setting up a
+        # subcommander-based tool, creating symlinks etc.
+        raise CalledDirectlyError
 
     # create boilerplate rcfile if nonexistent
     if not os.path.exists(rcfile):
@@ -197,12 +195,12 @@ def subcommander(argv0, *args):
     # if we haven't set the "seen the rc file" flag, set it and bounce through
     # the rcfile
     if not os.environ.get('SC_RC_APPLIED'):
-        os.environ['SC_RC_APPLIED'] = 1
+        os.environ['SC_RC_APPLIED'] = '1'
         return os.execv(rcfile, (rcfile, argv0) + args)
 
     exec_path = get_exec_path(exec_path_envname, rcfile)
 
-    subcommand, args = get_subcommand(args, exec_path)
+    subcommand, args = get_subcommand(argv0, args, exec_path)
 
     if os.path.isdir(subcommand):
         show_help(subcommand)
@@ -214,7 +212,6 @@ def subcommander(argv0, *args):
 
 def main():
     import sys
-    logger = logging.getLogger(os.path.basename(sys.argv[0]))
     logger.addHandler(logging.StreamHandler())
     try:
         return subcommander(*sys.argv)
