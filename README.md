@@ -253,8 +253,13 @@ disparate tools to have an easy way to determine the location of the root
 directory of the current context/project/checkout/virtualenv you are working
 with, and to have project-specific settings and hooks.
 
-Subcommander-based tools know what directories they "own", and the `init`
-script is included to make the setup of a context easy.
+To enable context discovery, symlink the `.apply_context` subcommand into your
+`EXEC_PATH`.
+
+        $ ln -s /path/to/lib/subcommander/.apply_context ~/usr/lib/proj/
+
+You can also link in the `init` script is included to make the setup of a
+context easy.
 
         $ ln -s /path/to/lib/subcommander/init ~/usr/lib/proj/
 
@@ -281,16 +286,17 @@ invoke it as before, but with the `SC_CONTEXT` environment variable set to
 ### Hook scripts and environment variables
 
 If you would like to call hook scripts or set variables into the environment
-every time you use `proj`, create an executable script named `~/.projrc`.
+every time you use `proj`, add them to `~/.projrc`.
 
 If you want to call hook scripts or set variables specific to your project, add
 those commands to the context file `.proj.context` in the root of your proj
 context.
 
-The context file and rc file is by default an _executable shell script_. You
-can replace it with any executable, written in any language, as long as you
-follow its convention of executing (with `exec()`) its argument list. Here's a
-context file that sets one environment variable:
+The context file `.proj.context` and rc file `~/.projrc` are by default
+_executable shell scripts_. You can replace them with any executable, written
+in any language, as long as you follow their convention of executing (with
+`exec()`) their argument list. Here's a context file that sets one environment
+variable:
 
     #!/bin/sh
     export FOO_PATH="/tmp/foo"
