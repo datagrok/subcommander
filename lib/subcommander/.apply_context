@@ -1,52 +1,69 @@
 #!/usr/bin/python
 """
-
 Locate the context file and exec it with our arguments, or just exec our
 arguments if it does not exist.
-"""
 
-class SpecifiedContextNotFoundError(SubcommanderUserError, EnvironmentError):
-    def __init__(self, ctx_envname, environment_contextfile):
+"""
+import os
+import logging
+
+logger=logging.getLogger()
+
+class SpecifiedContextNotFoundError(EnvironmentError):
+    def __init__(self, env_ctx_path_var, contextfile):
         super(SpecifiedContextNotFoundError, self).__init__(
             3,
-            "The context specified by %s does not exist" % ctx_envname,
-            environment_contextfile)
+            "The context specified by %s does not exist" % env_ctx_path_var,
+            contextfile)
 
 
-def discover_context(context_filename):
-    cwd = os.path.realpath(os.getcwd()).split(os.path.sep)
-    for n in range(len(cwd), 0, -1):
-        context_file = os.path.sep.join(cwd[0:n] + [context_filename])
-        if os.path.exists(context_file):
-            return context_file
+def get_contextfile():
+    """Return the full path to the context file.
+
+    Normally we walk up the directory tree looking for a contextfile, unless
+    NAME_CONTEXT specifies a path.
+
+    """
+    env_ctx_path_var = ('%(SC_ARGV0)s_CONTEXT' % os.environ).upper().replace(' ', '_')
+    contextfile_basename = ".%(SC_ARGV0)s.context" % os.environ
+
+    environment_context_path = os.environ.get(env_ctx_path_var)
+    if environment_context_path:
+        contextfile = os.path.join(environment_context_path, contextfile_basename)
+        if not os.path.exists(contextfile):
+            raise SpecifiedContextNotFoundError(env_ctx_path_var, contextfile)
+    else:
+        cwd = os.path.realpath(os.getcwd()).split(os.path.sep)
+        for n in range(len(cwd), 0, -1):
+            contextfile = os.path.sep.join(cwd[:n] + [contextfile_basename])
+            if os.path.exists(contextfile):
+                break
+        else:
+            contextfile = None
+
+    return contextfile
 
 
-def get_contextfile(ctx_envname):
-    environment_context = os.environ.get(ctx_envname)
-    context_filename = ".%(SC_MAIN)s.context" % os.environ
-    discovered_contextfile = discover_context(context_filename)
-    environment_contextfile = None
+def apply_context(argv0, *args):
+    contextfile = get_contextfile()
 
-    if environment_context:
-        environment_contextfile = os.path.join([
-            environment_context, context_filename])
-        if not os.path.exists(environment_contextfile):
-            raise SpecifiedContextNotFoundError(
-                    ctx_envname, environment_contextfile)
-
-    if (environment_context and discovered_contextfile
-            and not os.path.samefile(
-                environment_context, discovered_contextfile)):
-        warnings.warn(format_msg("""
-            Context specified by %s=%s differs from and overrides context
-            discovered at %s. Be sure that this is what you intend.""" % (
-                ctx_envname, environment_context, discovered_contextfile)))
-
-    if environment_contextfile:
-        return environment_contextfile
-    if discovered_contextfile:
-        return discovered_contextfile
-    return None
+    # execv never returns; I 'return' to indicate execution won't continue
+    if contextfile:
+        return os.execv(contextfile, (contextfile,) + args)
+    else:
+        return os.execv(args[0], args)
 
 
-ctx_envname = ('%s_CONTEXT' % argv0_basename).upper().replace(' ', '_')
+
+def main():
+    import sys
+    logger.addHandler(logging.StreamHandler())
+    try:
+        return apply_context(*sys.argv)
+    except SpecifiedContextNotFoundError, e:
+        logger.error(e)
+        return e.errno
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

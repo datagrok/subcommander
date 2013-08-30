@@ -116,7 +116,10 @@ def create_rc_file(rcfile, exec_path_envname):
 
             # The following line must be present for '%(SC_ARGV0)s' to function.
             # It ends the script; any lines after it will never be reached.
-            exec "$@"
+            if [ -x "$%(exec_path_envname)s/.apply_context" ]
+            then exec "$%(exec_path_envname)s/.apply_context" "$0"
+            else exec "$@"
+            fi
             """ % {
                 'exec_path_envname': exec_path_envname,
                 'SC_ARGV0': os.environ['SC_ARGV0'],
