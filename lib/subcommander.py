@@ -42,8 +42,8 @@ class SubcommanderUserError(Exception):
 class CalledDirectlyError(SubcommanderUserError, EnvironmentError):
     def __init__(self):
         super(CalledDirectlyError, self).__init__(
-            1,
-            """Subcommander is an abstraction that is not meant to be run under
+            1, """
+            Subcommander is an abstraction that is not meant to be run under
             its own name. Instead, create a symlink to it, with a different
             name. And read the instructions.""")
 
@@ -51,42 +51,44 @@ class CalledDirectlyError(SubcommanderUserError, EnvironmentError):
 class SubcommandDirectoryNotConfiguredError(SubcommanderUserError, EnvironmentError):
     def __init__(self, exec_path_envname, rcfile):
         super(SubcommandDirectoryNotConfiguredError, self).__init__(
-            6,
-            """Could not find %s set in the environment. This should specify
-            the path to subcommands. Recommend adding it to %s.""" % (
+            6, """
+            Could not find %s set in the environment. This should specify the
+            path to subcommands. Recommend adding it to %s.""" % (
                 exec_path_envname, rcfile))
 
 
 class SubcommandDirectoryMissingError(SubcommanderUserError, EnvironmentError):
     def __init__(self, exec_path):
         super(SubcommandDirectoryMissingError, self).__init__(
-            4,
-            """Subcommands directory does not exist. Place executable files
-            here to enable them as sub-commands""",
+            4, """
+            Subcommands directory does not exist. Place executable files here
+            to enable them as sub-commands""",
             exec_path)
 
 
 class NoCommandSpecifiedError(SubcommanderUserError, EnvironmentError):
     def __init__(self):
         super(NoCommandSpecifiedError, self).__init__(
-            2,
-            "No COMMAND specified.")
+            2, "No COMMAND specified.")
+
+
+class UnknownSubcommandError(SubcommanderUserError, EnvironmentError):
+    def __init__(self, command):
+        message = "Not a known COMMAND for %r" % os.environ['SC_COMMAND']
+        if len(command) > 1:
+            message = """
+            Complete command sequence must precede options and other
+            arguments. """ + message
+
+        super(UnknownSubcommandError, self).__init__(
+            3, message, command[0])
 
 
 class ConfigFileNotExecutableError(SubcommanderUserError, EnvironmentError):
     def __init__(self, configfile):
         super(ConfigFileNotExecutableError, self).__init__(
-            5,
-            "Configuration file is not executable",
+            5, "Configuration file is not executable",
             configfile)
-
-
-class UnknownSubcommandError(SubcommanderUserError, EnvironmentError):
-    def __init__(self, command):
-        super(UnknownSubcommandError, self).__init__(
-            7,
-            "Unknown %s command" % os.environ['SC_ARGV0'],
-            command)
 
 
 def create_rc_file(rcfile, exec_path_envname):
@@ -123,6 +125,11 @@ def create_rc_file(rcfile, exec_path_envname):
 
 
 def get_exec_path(exec_path_envname, rcfile):
+    """Return the path where subcommands may be found.
+
+    Raises exceptions if the path is unconfigured or nonexistent.
+
+    """
     try:
         exec_path = os.environ[exec_path_envname]
     except KeyError:
@@ -137,6 +144,10 @@ def get_exec_path(exec_path_envname, rcfile):
 
 
 def show_help(exec_path):
+    """If a subcommand 'help' is found in the exec path, run it. Otherwise fall
+    back to a simple usage message. Does not terminate execution.
+
+    """
     help_executable = os.path.join(exec_path, 'help')
     if os.access(help_executable, os.R_OK|os.X_OK):
         subprocess.call([help_executable])
@@ -144,33 +155,36 @@ def show_help(exec_path):
         logger.error("usage: %(SC_COMMAND)s COMMAND [ARGS...]\n" % os.environ)
 
 
-def get_subcommand(argv0, command, exec_path):
-    """Find the first executable file that matches the set of commands"""
-    subcommand = exec_path
-    args = []
-    for n, arg in enumerate(command):
-        commands, args = command[:n+1], command[n+1:]
+def get_subcommand(args, exec_path):
+    """Find the deepest executable file or directory that matches the command sequence.
+
+    """
+    for commands, commandargs in ((args[:i], args[i:]) for i in range(len(args), -1, -1)):
         subcommand = os.path.join(exec_path, *commands)
-
-        if not os.access(subcommand, os.R_OK|os.X_OK):
-            raise UnknownSubcommandError(' '.join(commands))
-
-        if os.path.isfile(subcommand):
+        if os.access(subcommand, os.R_OK|os.X_OK):
             break
 
-    os.environ['SC_COMMAND'] = ' '.join((argv0,) + commands)
-    return subcommand, args
+    os.environ['SC_COMMAND'] = ' '.join((os.environ['SC_ARGV0'],) + commands)
+    return subcommand, commandargs
 
 
 def subcommander(argv0, *args):
     """
 
-    The following arguments are special to subcommander-based tools, and will
-    be plucked out of the command line for processing:
+    "Options" are arguments that begin with '-'.
+
+    The following options are special to subcommander-based tools, and will be
+    plucked out of the command line for processing no matter where they appear:
 
     -h, --help
     -V, --version
     -v, --verbose
+
+    All other options must appear AFTER the command sequence. Example:
+
+    mytool foo --arg bar baz    # executes "foo" with arguments "--arg bar baz"
+    mytool foo bar --arg baz    # executes "foo/bar" with arguments "--arg baz"
+    mytool foo bar baz --arg    # executes "foo/bar/baz" with arguments "--arg"
 
     """
     argv0_basename = os.path.basename(argv0)
@@ -200,11 +214,14 @@ def subcommander(argv0, *args):
 
     exec_path = get_exec_path(exec_path_envname, rcfile)
 
-    subcommand, args = get_subcommand(argv0, args, exec_path)
+    subcommand, args = get_subcommand(args, exec_path)
 
     if os.path.isdir(subcommand):
         show_help(subcommand)
-        raise NoCommandSpecifiedError()
+        if args:
+            raise UnknownSubcommandError(args)
+        else:
+            raise NoCommandSpecifiedError()
 
     # execv never returns; I 'return' to indicate execution won't continue
     return os.execv(subcommand, (subcommand,) + args)

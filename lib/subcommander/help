@@ -80,9 +80,10 @@ def porcelain():
 def usage():
     print "usage: {SC_COMMAND} COMMAND [ARGS...]".format(**os.environ)
     print
-    print "Available {SC_COMMAND} commands are:".format(**os.environ)
+    print "Available %(SC_COMMAND)r commands are:" % os.environ
     for basename, description in list_subcommands():
         print '    %-20s %s' % (basename, description)
+    print
 
 
 def main(argv):
