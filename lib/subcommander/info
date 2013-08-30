@@ -19,20 +19,22 @@ fmt <<- EOF
 
 	The name of this subcommander-based tool:
 
-	    SC_MAIN=$SC_MAIN
+	    SC_ARGV0=$SC_ARGV0
 
-	    SC_NAME=$SC_NAME
+	The command sequence used to invoke this command: 
 
-	The current context:
+	    SC_COMMAND=$SC_COMMAND
+
+	The current context, if any:
 
 	    SC_CONTEXT=$SC_CONTEXT
 
-	$SC_MAIN will execute the following, in order, before its first subcommand,
-	if they exist and are executable. Note that these are *executed*, not
-	sourced, and thus may be implemented in any language. To function properly,
-	both executables must call or exec() their argument list. It is expected
-	that the user may modify these in order to call hook scripts or modify the
-	environment.
+	$SC_ARGV0 will execute the following, in order, before its first
+	subcommand, if they exist and are executable. Note that these are
+	*executed*, not sourced, and thus may be implemented in any language. To
+	function properly, both executables must call or exec() their argument
+	list. It is expected that the user may modify these in order to call hook
+	scripts or modify the environment.
 
 EOF
 
