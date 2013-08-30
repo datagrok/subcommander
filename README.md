@@ -405,5 +405,5 @@ script at a particular place in the filesystem.
 
 ## License
 
-[AGPLv3](http://www.gnu.org/licenses/agpl.html). If you need something more
+[GPLv3](http://www.gnu.org/licenses/gpl.html). If you need something more
 corporate-friendly, contact me and I'll consider it.
