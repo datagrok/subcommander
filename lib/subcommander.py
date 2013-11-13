@@ -226,6 +226,10 @@ def subcommander(argv0, *args):
         else:
             raise NoCommandSpecifiedError()
 
+    # backwards compatibility with subcommander 0.x
+    os.environ['SC_MAIN'] = os.environ['SC_ARGV0']
+    os.environ['SC_NAME'] = os.environ['SC_COMMAND']
+
     # execv never returns; I 'return' to indicate execution won't continue
     return os.execv(subcommand, (subcommand,) + args)
 

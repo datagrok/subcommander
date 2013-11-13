@@ -41,6 +41,12 @@ def get_contextfile():
         else:
             contextfile = None
 
+        if contextfile:
+            environment_context_path = os.path.dirname(contextfile)
+            os.environ[env_ctx_path_var] = environment_context_path
+            # For backwards compatibility with subcommander 0.x::
+            os.environ['SC_CONTEXT'] = environment_context_path
+
     return contextfile
 
 
