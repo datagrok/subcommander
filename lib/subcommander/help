@@ -36,14 +36,14 @@ def exec_sub_help(argv):
     with '--help'.
 
     Calling:
-        $SC_NAME help command
+        $SC_NAME help command [args]
     is equivalent to:
-        $SC_NAME command --help
+        $SC_NAME command --help [args]
 
     '''
     command = argv[1]
-    args = argv[2:]
-    args.insert(0, '--help')
+    args = argv[1:]
+    args.insert(1, '--help')
     os.execvp(os.path.join(dirname, command), args)
 
 def list_subcommands():
