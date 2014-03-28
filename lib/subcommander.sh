@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Description: Runs subcommands
 set -e
 
@@ -120,6 +120,13 @@ eval "environment_context=\$$ctx_envname"
 [ $# -gt 0 ] || usage_abort 2 <<-END
 	No COMMAND specified.
 END
+
+#If we were called with --help, show help
+if [[ $1 == '--help' ]] ; then
+	# pop --help, push help
+	shift
+	set -- help "$@"
+fi
 
 subcommandbase="$1"
 subcommand="$exec_path/$1"

@@ -16,7 +16,7 @@ import re
 import sys
 
 dirname = os.path.dirname(sys.argv[0])
-desc_re = re.compile('.{0,4}desc(?:ription)?\s*[:=]\s*(.*)', re.I)
+desc_re = re.compile('.{0,4}desc(?:ription)?\s*[:=]\s*"?(.*?)"?$', re.I)
 
 def get_description(filename):
     '''Look through the first few lines of a file for a Description: line,
@@ -42,6 +42,10 @@ def exec_sub_help(argv):
 
     '''
     command = argv[1]
+    if command in ('--help', 'help'):
+        print __doc__
+        exit()
+
     args = argv[1:]
     args.insert(1, '--help')
     os.execvp(os.path.join(dirname, command), args)
