@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Description: Runs subcommands
 set -e
 
@@ -122,7 +122,7 @@ eval "environment_context=\$$ctx_envname"
 END
 
 #If we were called with --help, show help
-if [[ $1 == '--help' ]] ; then
+if [ "$1" = "--help" ]; then
 	# pop --help, push help
 	shift
 	set -- help "$@"
