@@ -1,5 +1,10 @@
 # Subcommander
 
+Note: You are on the 'v0.x' branch of subcommander. I have a python-based
+rewrite in development; see branch 'x1.x'.
+
+---
+
 Do you have a collection of tools and scripts that you've written to save time
 at the command line? Is it hard to keep them documented, and difficult for new
 teammates to get familiar with them?  Subcommander is here to help.
@@ -8,8 +13,7 @@ Several familiar tools (like git, subversion, cvs, zip, even django-admin.py,
 etc., follow a pattern where the main executable is invoked with an argument
 naming another executable specific to that system. For example, `git push`
 causes `git` to invoke `git-push`. This establishes a kind of "namespace" for
-executables. Subcommander provides a kind of framework for quickly building
-such executable namespaces.
+executables.
 
 Git also performs *context discovery* for its subcommands. Whenever git is
 invoked, the first thing it does is identify what git repository you intend for
@@ -244,17 +248,48 @@ invoke it as before, but with the `SC_CONTEXT` environment variable set to
 ### Hook scripts and environment variables
 
 If you would like to call hook scripts or set variables into the environment
-specific to your project, just add those commands to the context file
-`.proj.context`. If you would like to hook into each invocation of your
-script regardless of context, you may also create an executable script named
-`~/.projrc`.
+every time you use `proj`, add them to `~/.projrc`.
 
-The context file is, by default, acutally an _executable shell script_. You can
-replace it with any executable, written in any language, as long as you follow
-its convention of executing (with `exec()`) its argument list.
+If you want to call hook scripts or set variables specific to your project, add
+those commands to the context file `.proj.context` in the root of your proj
+context.
+
+The context file `.proj.context` and rc file `~/.projrc` are by default
+_executable shell scripts_. You can replace them with any executable, written
+in any language, as long as you follow their convention of executing (with
+`exec()`) their argument list. Here's a context file that sets one environment
+variable:
+
+    #!/bin/sh
+    export FOO_PATH="/tmp/foo"
+    exec "$@"
+
+Here it is again, in Python:
+
+    #!/usr/bin/python
+    import os
+    os.environ['FOO_PATH'] = '/tmp/foo'
+    os.execv(*sys.argv[1:])
+
+It doesn't even need to be a script. Here it is again, as a C program you can
+compile and use as a context file. (Though I can't imagine why anybody would do
+this.)
+
+    #include <stdio.h>
+    int main(int argc, char *argv[])
+    {
+        setenv("FOO_PATH", "/tmp/foo", 1);
+        return execvp(argv[1], &(argv[1]));
+    }
+
+Now, whenever a subcommand is executed by `proj`, the environment variable
+`FOO_PATH` will be set to `/tmp/foo`.
+
+**Remember: Subcommander configuration files are just normal executables that
+exec() their arguments.**
 
 These names are dependent on what you name your tool. If instead of `proj` you
-called your tool `foo`, your context file would be named `.foo.context`, and
+called your tool `foo`, your context files would be named `.foo.context`, and
 your rc file would be named `~/.foorc`.
 
 ### Integration with virtualenv
@@ -283,10 +318,15 @@ If you have already done `proj init` in the root of your virtualenv environment:
 ## Other tools like this one
 
 There are many tools that accomplish something similar. This is my defense
-against accusations of [NIH Syndrome][]. Here is a comparison of similar tools I
-have found, and the reason why I created this instead of using them.
+against accusations of [NIH Syndrome][]. Here is a comparison of similar tools
+I have found, and the reason why I created this instead of using them.
 
-* [Wayne E. Seguin's BDSM](https://bdsm.beginrescueend.com/): Too complex, no context discovery(?), nsfw docs make my eyes bleed.
+* [37signals/sub](https://github.com/37signals/sub): This tool adopts many of the same principles as Subcommander, such as language-agnosticism. I discovered it months after I had written Subcommander. You might consider it if you prefer its license or architecture. There's a good introduction in this blog post: [Automating with convention: Introducing sub](http://37signals.com/svn/posts/3264-automating-with-convention-introducing-sub])
+
+Others:
+
+* [jwmayfield/fn](https://github.com/jwmayfield/fn) a "personalization of 37signals/sub"
+* [Wayne E. Seguin's BDSM](https://bdsm.beginrescueend.com/): Too complex, no context discovery(?), nsfw docs make my eyes bleed. From the developer of [RVM](http://rvm.io/).
 * [anandology/subcommand](https://github.com/anandology/subcommand): Requires commands to be implemented in Python.
 * [jds/clik](https://github.com/jds/clik): Requires commands to be implemented in Python.
 * [rkumar/subcommand](https://github.com/rkumar/subcommand): Requires commands to be implemented in Ruby.
@@ -294,6 +334,22 @@ have found, and the reason why I created this instead of using them.
 * [ander/subcommand](https://github.com/ander/subcommand): Requires commands to be implemented in Ruby.
 * [tsantos/subcommander](https://github.com/tsantos/subcommander): Requires commands to be implemented in Ruby.
 * [msassak/kerplutz](https://github.com/msassak/kerplutz): I can't really figure it out but I think it's Ruby-only.
+* [fabric/fabric](https://github.com/fabric/fabric): Subcommands are implemented in Python. Strange command-line interface to support running commands on multiple remote hosts at once. Treats local host as remote host.
+* [anandology/subcommand](https://github.com/anandology/subcommand): Requires subcommands to be implmented in Python.
+* [GaretJax/subcommands](https://github.com/GaretJax/subcommands)
+* [will0/instacmd](https://github.com/will0/instacmd)
+* [repejota/subcmd](https://github.com/repejota/subcmd)
+* [m1m0r1/argtools.py](https://github.com/m1m0r1/argtools.py)
+* [dbrock/exec-longest-prefix](https://github.com/dbrock/exec-longest-prefix)
+* [nicksloan/subcommander](https://github.com/nicksloan/subcommander)
+* [optparse-subcommand](https://github.com/bjeanes/optparse-subcommand) Ruby.
+* [ander/subcommand](https://github.com/ander/subcommand) Ruby.
+* [domnikl/subcommand](https://github.com/domnikl/subcommand) Go.
+
+It may be simple to create a small launcher for scripts in other languages, but
+that means every time you add, move, or rename a script you'd have to touch
+some main file. Subcommander is entirely configured by the existence of a
+script at a particular place in the filesystem.
 
 [NIH Syndrome]: http://en.wikipedia.org/wiki/Not_Invented_Here
 
@@ -306,8 +362,9 @@ have found, and the reason why I created this instead of using them.
   using `chroot`. I would love some way to automatically verify whether or not
   all code paths in all of these scripts work perfectly on various unices--
   Ubuntu, Debian, OS X, Arch, Red Hat.
+- Employ another way to get descriptive text; we won't be able to parse
+  binaries for 'Description:' lines.
 
 ## License
 
-[AGPLv3](http://www.gnu.org/licenses/agpl.html). If you need something more
-corporate-friendly, contact me and I'll consider it.
+[GPLv3](http://www.gnu.org/licenses/gpl.html)
