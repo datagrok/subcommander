@@ -365,6 +365,8 @@ script at a particular place in the filesystem.
 - Employ another way to get descriptive text; we won't be able to parse
   binaries for 'Description:' lines.
 
-## License
+## License: GPLv3
 
-[GPLv3](http://www.gnu.org/licenses/gpl.html)
+Copyright 2014 [Michael F. Lamb](http://datagrok.org).
+
+This software is released under the terms of the [GNU General Public License](http://www.gnu.org/licenses/gpl.html), version 3.
