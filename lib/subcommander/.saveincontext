@@ -1,6 +1,21 @@
 #!/bin/sh
-set -e
 # Description: insert lines given on stdin into the context file.
+
+#
+# subcommander/lib/.saveincontext - insert lines into context file
+#
+# Copyright 2014  Michael F. Lamb <http://datagrok.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at
+# your option) any later version.
+#
+# License: GPLv3 http://www.gnu.org/licenses/gpl.html
+#
+
+set -e
+
 #
 # Example: If you want to make some variable available to all commands that run
 # under your tool, you can edit your context file by hand. But if you want to

@@ -1,14 +1,26 @@
 #!/usr/bin/python
-'''Subcommander 'help'
+# Description: Lists the available sub-commands (this text)
 
-Description: Lists the available sub-commands (this text)
+#
+# subcommander/lib/help - descriptive help output
+#
+# Copyright 2014  Michael F. Lamb <http://datagrok.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at
+# your option) any later version.
+#
+# License: GPLv3 http://www.gnu.org/licenses/gpl.html
+#
+
+"""Subcommander 'help'
 
 This script discovers the short descriptive text for each subcommand by
 searching for text within the first 10 lines of each script following
 "desc[ription]", optionally with a trailing : or =.
-'''
 
-
+"""
 from glob import glob
 from itertools import islice
 import os
@@ -19,10 +31,10 @@ dirname = os.path.dirname(sys.argv[0])
 desc_re = re.compile('.{0,4}desc(?:ription)?\s*[:=]\s*"?(.*?)"?$', re.I)
 
 def get_description(filename):
-    '''Look through the first few lines of a file for a Description: line,
+    """Look through the first few lines of a file for a Description: line,
     and return the description.
 
-    '''
+    """
     with open(filename) as fp:
         for line in islice(fp, 10):
             try:
@@ -32,7 +44,7 @@ def get_description(filename):
     return ''
 
 def exec_sub_help(argv):
-    '''If 'help' is called with an argument, delegate to calling the subcommand
+    """If 'help' is called with an argument, delegate to calling the subcommand
     with '--help'.
 
     Calling:
@@ -40,7 +52,7 @@ def exec_sub_help(argv):
     is equivalent to:
         $SC_NAME command --help [args]
 
-    '''
+    """
     command = argv[1]
     if command in ('--help', 'help'):
         print __doc__
@@ -51,10 +63,10 @@ def exec_sub_help(argv):
     os.execvp(os.path.join(dirname, command), args)
 
 def list_subcommands():
-    '''Walk through our sibling executables, displaying their name and their
+    """Walk through our sibling executables, displaying their name and their
     descriptive string.
 
-    '''
+    """
     for f in sorted(glob(os.path.join(dirname, '*'))):
         basename = os.path.basename(f)
         if os.path.isdir(f):
@@ -69,7 +81,7 @@ def list_subcommands():
         yield basename, description
 
 def porcelain():
-    '''Give the output in a stable, easy-to-parse format for scripts.'''
+    """Give the output in a stable, easy-to-parse format for scripts."""
     for basename, description in list_subcommands():
         print '%s:%s' % (basename, description)
 

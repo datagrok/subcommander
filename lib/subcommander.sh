@@ -1,9 +1,21 @@
 #!/bin/sh
 # Description: Runs subcommands
+
+#
+# subcommander - invokes subcommands arranged into a directory hierarchy
+#
+# Copyright 2014  Michael F. Lamb <http://datagrok.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at
+# your option) any later version.
+#
+# License: GPLv3 http://www.gnu.org/licenses/gpl.html
+#
+
 set -e
 
-# subcommander
-#
 # First walk up the directory tree looking for a .$0.context file to source.
 # Then it look for an executable named $0.d/$1 or $0.d/$1.* to execute.
 
