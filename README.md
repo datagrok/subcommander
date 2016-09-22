@@ -1,17 +1,5 @@
 # Subcommander
 
-Branch 'v1.x' differences from 'v0.x':
-
-- Eliminate default .d directory; default to /usr/lib/blah or ~/usr/lib/blah
-- Perform recursive walk; don't rely on sub-symlinks to subcommander
-- Implement in python
-- Try for python 2.4/centos 5 compatibility (yuck)
-- Creates rcfile if nonexistent
-- Package so may be installed system-wide by package manager/pip/easy\_install,
-- Separate logic of context discovery into an included subcommand, not part of main executable.
-
----
-
 Do you have a collection of tools and scripts that you've written to save time
 at the command line? Is it hard to keep them documented, and difficult for new
 teammates to get familiar with them? Subcommander is here to help.
@@ -27,7 +15,19 @@ this pattern, so you can get your piles of disparate scripts organized. It
 intends to be **language agnostic**: all sub-commands may be implemented in any
 number of languages. Subcommander itself happens to be implemented in Python,
 but this should make no difference to the user. The author plans to
-re-implement the same functionality in C.
+re-implement the same functionality in Rust.
+
+### What's new since v0.x
+
+The first version of Subcommander was implemented as a bash script. We've left
+that behind for a complete rewrite in Python, and made a few design changes:
+
+- Eliminated default .d directory; default to /usr/lib/blah or ~/usr/lib/blah
+- Perform recursive walk; don't rely on sub-symlinks to subcommander
+- Implemented in python
+- Creates rcfile if nonexistent
+- Package may be installed system-wide by package manager/pip/easy\_install,
+- Separate logic of context discovery into an included subcommand, not part of main executable.
 
 ## Install
 
@@ -359,7 +359,7 @@ There are many tools that accomplish something similar. This is my defense
 against accusations of [NIH Syndrome][]. Here is a comparison of similar tools
 I have found, and the reason why I created this instead of using them.
 
-* [37signals/sub](https://github.com/37signals/sub): This tool adopts many of the same principles as Subcommander, such as language-agnosticism. I discovered it months after I had written Subcommander. You might consider it if you prefer its architecture. It's MIT licensed. There's a good introduction in this blog post: [Automating with convention: Introducing sub](http://37signals.com/svn/posts/3264-automating-with-convention-introducing-sub])
+* [37signals/sub](https://github.com/37signals/sub): This tool adopts many of the same principles as Subcommander, such as language-agnosticism. I discovered it months after I had written Subcommander. You might consider it if you prefer its license or architecture. There's a good introduction in this blog post: [Automating with convention: Introducing sub](http://37signals.com/svn/posts/3264-automating-with-convention-introducing-sub])
 
 Others:
 
@@ -405,5 +405,6 @@ script at a particular place in the filesystem.
 
 ## License
 
-[GPLv3](http://www.gnu.org/licenses/gpl.html). If you need something more
-corporate-friendly, contact me and I'll consider it.
+All of the code herein is copyright 2016 [Michael F. Lamb](http://datagrok.org) and released under the terms of the [GNU General Public License, version 3][GPLv3] (or, at your option, any later version.)
+
+[GPLv3]: http://www.gnu.org/licenses/gpl.html
