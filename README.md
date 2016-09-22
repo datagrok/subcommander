@@ -1,10 +1,5 @@
 # Subcommander
 
-Note: You are on the 'v0.x' branch of subcommander. I have a python-based
-rewrite in development; see branch 'x1.x'.
-
----
-
 Do you have a collection of tools and scripts that you've written to save time
 at the command line? Is it hard to keep them documented, and difficult for new
 teammates to get familiar with them?  Subcommander is here to help.
@@ -28,6 +23,12 @@ you can get your piles of disparate scripts organized. It intends to be
 any number of languages. Subcommander itself happens to be implemented in shell
 script, but this should make no difference to the user. The author plans to
 re-implement in both Python and C.
+
+### Deprecated
+
+> **Note:** You are on the 'v0.x' branch of subcommander. I used this code in
+> this state for a long time, but the branch is now **deprecated**. All new
+> work is going toward a python-based rewrite; see the `master` branch.
 
 ## Install
 
@@ -365,8 +366,8 @@ script at a particular place in the filesystem.
 - Employ another way to get descriptive text; we won't be able to parse
   binaries for 'Description:' lines.
 
-## License: GPLv3
+## License: GPLv3+
 
-Copyright 2014 [Michael F. Lamb](http://datagrok.org).
+All of the code herein is copyright 2016 [Michael F. Lamb](http://datagrok.org) and released under the terms of the [GNU General Public License, version 3][GPLv3] (or, at your option, any later version.)
 
-This software is released under the terms of the [GNU General Public License](http://www.gnu.org/licenses/gpl.html), version 3.
+[GPLv3]: http://www.gnu.org/licenses/gpl.html
