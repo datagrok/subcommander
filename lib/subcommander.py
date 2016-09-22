@@ -1,18 +1,38 @@
-#!/usr/bin/python
+#!/usr/bin/python3
+# Description: Runs subcommands
 
 '''subcommander.py
 
-A python implementation of subcommander.sh. It should work almost exactly the
-same way.
+Invokes subcommands arranged into a directory hierarchy.
+
+Usage: create a symlink to this file named for your top-level tool e.g.
+"mytool", then place scripts to become subcommands in ~/usr/lib/mytool/
+
+See README.md for details.
 
 '''
+#
+# Copyright 2014  Michael F. Lamb <http://datagrok.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# License: GPLv3+ http://www.gnu.org/licenses/gpl.html
+#
 
-import os
-import sys
-import warnings
-import subprocess
-import textwrap
 import logging
+import os
+import subprocess
+import sys
+import textwrap
+import warnings
 
 logger = logging.getLogger(os.path.basename(sys.argv[0]))
 
