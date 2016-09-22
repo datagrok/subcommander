@@ -29,6 +29,9 @@ that behind for a complete rewrite in Python, and made a few design changes:
 - Package may be installed system-wide by package manager/pip/easy\_install,
 - Separate logic of context discovery into an included subcommand, not part of main executable.
 
+However, v0.x was more thoroughly used and tested, so it may have fewer bugs
+than this branch under development.
+
 ## Install
 
 Clone this repository somewhere on your system.
