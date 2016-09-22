@@ -144,7 +144,7 @@ def create_rc_file(rcfile, exec_path_envname):
                 'exec_path_envname': exec_path_envname,
                 'SC_ARGV0': os.environ['SC_ARGV0'],
             }))
-        os.fchmod(fp.fileno(), 0755)
+        os.fchmod(fp.fileno(), 0o755)
 
 
 def get_exec_path(exec_path_envname, rcfile):
@@ -259,7 +259,7 @@ def main():
     logger.addHandler(logging.StreamHandler())
     try:
         return subcommander(*sys.argv)
-    except SubcommanderUserError, e:
+    except SubcommanderUserError as e:
         # If a SubcommanderUserError occurs, show a normal-looking error
         # message, not a Python traceback.
         logger.error(e)
